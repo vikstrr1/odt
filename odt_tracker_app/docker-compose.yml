@@ -1,0 +1,10 @@
+services:
+  odt-tracker:
+    build: .
+    container_name: odt-tracker
+    ports:
+      - '8080:8080'
+    environment:
+      - ODT_WORKBOOK_PATH=/data/odt_tracker.xlsm
+    volumes:
+      - /Users/rasmusvikstrom/Desktop:/data:ro

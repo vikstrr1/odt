@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ÖDT Tracker 2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">ÖDT Tracker</p>
+          <h1>2025 dashboard</h1>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button id="resetGameButton" type="button">New game</button>
+          <div id="statusBadge" class="status-pill">Loading tracker…</div>
+        </div>
+      </header>
+
+      <section id="summaryCards" class="summary-grid"></section>
+
+      <section class="controls-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Add participant</h2>
+          </div>
+          <form id="participantForm" class="stacked-form">
+            <label>
+              Name
+              <input name="name" type="text" required />
+            </label>
+            <label>
+              Team
+              <input name="team_name" type="text" value="Team 1" required />
+            </label>
+            <label>
+              Weight (kg)
+              <input name="weight_kg" type="number" step="0.1" value="75" required />
+            </label>
+            <label>
+              Arrival time
+              <input name="arrival_time" type="datetime-local" />
+            </label>
+            <button type="submit">Save participant</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Log drink</h2>
+          </div>
+          <form id="drinkForm" class="stacked-form">
+            <label>
+              Participant
+              <select name="participant_name" required>
+                <option value="">Loading participants…</option>
+              </select>
+            </label>
+            <label>
+              Beverage
+              <input name="beverage" type="text" required />
+            </label>
+            <label>
+              Volume (ml)
+              <input name="volume_ml" type="number" step="1" value="500" required />
+            </label>
+            <label>
+              ABV (%)
+              <input name="abv_percent" type="number" step="0.1" value="5.2" required />
+            </label>
+            <label>
+              Time
+              <input name="timestamp" type="datetime-local" />
+            </label>
+            <button type="submit">Save drink</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Participant ranking</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Participant</th>
+                <th>Team</th>
+                <th>Total volume (L)</th>
+                <th>Alcohol (L)</th>
+                <th>Alcohol / kg</th>
+              </tr>
+            </thead>
+            <tbody id="rankingBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="two-col">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Team standings</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>Members</th>
+                  <th>Total volume</th>
+                  <th>Total alcohol</th>
+                </tr>
+              </thead>
+              <tbody id="teamBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Usage trend</h2>
+          </div>
+          <canvas id="timelineChart" height="280"></canvas>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Game history</h2>
+        </div>
+        <div id="gameHistoryList" class="table-wrap"></div>
+      </section>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
