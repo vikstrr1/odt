@@ -1,0 +1,28 @@
+steps:
+- name: 'gcr.io/cloud-builders/npm'
+  dir: 'frontend'
+  args: ['ci']
+- name: 'gcr.io/cloud-builders/npm'
+  dir: 'frontend'
+  args: ['run', 'build']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-f', 'odt_tracker_app/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/odt-tracker:$COMMIT_SHA', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push','gcr.io/$PROJECT_ID/odt-tracker:$COMMIT_SHA']
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+    - 'run'
+    - 'deploy'
+    - 'odt-2026'
+    - '--image'
+    - 'gcr.io/$PROJECT_ID/odt-tracker:$COMMIT_SHA'
+    - '--region'
+    - 'europe-west1'
+    - '--platform'
+    - 'managed'
+    - '--no-allow-unauthenticated'
+images:
+- 'gcr.io/$PROJECT_ID/odt-tracker:$COMMIT_SHA'
+substitutions:
+  _CLOUD_SQL_INSTANCE: ''
