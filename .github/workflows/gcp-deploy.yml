@@ -26,6 +26,11 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Enable required GCP APIs
+        run: |
+          gcloud services enable cloudbuild.googleapis.com artifactregistry.googleapis.com iam.googleapis.com containeranalysis.googleapis.com run.googleapis.com iap.googleapis.com --project ${{ secrets.GCP_PROJECT }}
+
+
       - name: Configure Docker for GCR
         run: |
           gcloud auth configure-docker --quiet
@@ -73,10 +78,21 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          SERVICE=${{ env.CLOUD_RUN_SERVICE || 'odt-tracker' }}
+          # Deploy service with runtime settings
+          SERVICE=${{ env.CLOUD_RUN_SERVICE || 'odt-2026' }}
           IMAGE=gcr.io/${{ secrets.GCP_PROJECT }}/odt-tracker:${{ github.sha }}
           SA_EMAIL=${CLOUD_RUN_SA}
-          CMD=(gcloud run deploy "$SERVICE" --image "$IMAGE" --region "${{ secrets.GCP_REGION }}" --platform managed --no-allow-unauthenticated --service-account "$SA_EMAIL")
+          CMD=(gcloud run deploy "$SERVICE" \
+            --image "$IMAGE" \
+            --region "${{ secrets.GCP_REGION || 'europe-west1' }}" \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --service-account "$SA_EMAIL" \
+            --memory 512Mi \
+            --cpu 1 \
+            --timeout 300s \
+            --concurrency 80 \
+            --min-instances 0)
           # If Cloud SQL instance is provided (from Terraform), add it to the deploy command
           if [ -n "$CLOUD_SQL_INSTANCE" ]; then
             CMD+=(--add-cloudsql-instances "$CLOUD_SQL_INSTANCE")
@@ -98,7 +114,19 @@ jobs:
           echo "Running: ${CMD[@]}"
           "${CMD[@]}"
         env:
-          CLOUD_RUN_SERVICE: odt-tracker
+          CLOUD_RUN_SERVICE: odt-2026
+
+      - name: Restrict Cloud Run access to ADMIN_EMAIL (IAM invoker)
+        if: success()
+        run: |
+          SERVICE=${{ env.CLOUD_RUN_SERVICE || 'odt-2026' }}
+          MEMBER="user:${{ secrets.ADMIN_EMAIL }}"
+          # grant the specific user the Cloud Run Invoker role
+          gcloud run services add-iam-policy-binding "$SERVICE" --member="$MEMBER" --role="roles/run.invoker" --region "${{ secrets.GCP_REGION || 'europe-west1' }}" --platform managed
+          # remove unauthenticated access if present
+          if gcloud run services remove-iam-policy-binding "$SERVICE" --member="allUsers" --role="roles/run.invoker" --region "${{ secrets.GCP_REGION || 'europe-west1' }}" --platform managed 2>/dev/null; then
+            echo "Removed public unauthenticated binding"
+          fi
 
       - name: Post-deploy info
         run: |
