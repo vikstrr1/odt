@@ -23,4 +23,4 @@ RUN mkdir -p ./odt_tracker_app/static/frontend
 COPY --from=frontend-builder /app/frontend/dist ./odt_tracker_app/static/frontend
 
 EXPOSE 8080
-CMD ["uvicorn", "app:sio_app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "odt_tracker_app.app:sio_app", "--host", "0.0.0.0", "--port", "8080"]
