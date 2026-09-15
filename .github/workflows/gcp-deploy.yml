@@ -15,6 +15,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
@@ -25,21 +30,54 @@ jobs:
         run: |
           gcloud auth configure-docker --quiet
 
+      - name: Build frontend (Vite)
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy frontend build into backend static
+        run: |
+          rm -rf odt_tracker_app/static/frontend || true
+          mkdir -p odt_tracker_app/static/frontend
+          cp -r frontend/dist/* odt_tracker_app/static/frontend/
+
       - name: Build container image
         run: |
           IMAGE="gcr.io/${{ secrets.GCP_PROJECT }}/${{ env.IMAGE_NAME || 'odt-tracker' }}:${{ github.sha }}"
-          docker build -t "$IMAGE" ./odt_tracker_app
+          docker build -t "$IMAGE" .
           docker push "$IMAGE"
         env:
           IMAGE_NAME: odt-tracker
 
       - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v1
-        with:
-          service: ${{ env.CLOUD_RUN_SERVICE || 'odt-tracker' }}
-          image: gcr.io/${{ secrets.GCP_PROJECT }}/odt-tracker:${{ github.sha }}
-          region: ${{ secrets.GCP_REGION }}
-          allow-unauthenticated: false
+        run: |
+          SERVICE=${{ env.CLOUD_RUN_SERVICE || 'odt-tracker' }}
+          IMAGE=gcr.io/${{ secrets.GCP_PROJECT }}/odt-tracker:${{ github.sha }}
+          CMD=(gcloud run deploy "$SERVICE" --image "$IMAGE" --region "${{ secrets.GCP_REGION }}" --platform managed --no-allow-unauthenticated)
+          # If Cloud SQL instance is provided, add it to the deploy command
+          if [ -n "${{ secrets.CLOUD_SQL_INSTANCE }}" ]; then
+            CMD+=(--add-cloudsql-instances "${{ secrets.CLOUD_SQL_INSTANCE }}")
+          fi
+          # Set runtime environment variables if provided via secrets
+          ENVFLAGS=()
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            ENVFLAGS+=(--set-env-vars "JWT_SECRET=${{ secrets.JWT_SECRET }}")
+          fi
+          if [ -n "${{ secrets.ADMIN_USER }}" ]; then
+            ENVFLAGS+=(--set-env-vars "ADMIN_USER=${{ secrets.ADMIN_USER }}")
+          fi
+          if [ -n "${{ secrets.ADMIN_PASSWORD }}" ]; then
+            ENVFLAGS+=(--set-env-vars "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}")
+          fi
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+            ENVFLAGS+=(--set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}")
+          fi
+          if [ ${#ENVFLAGS[@]} -gt 0 ]; then
+            CMD+=("${ENVFLAGS[@]}")
+          fi
+          echo "Running: ${CMD[@]}"
+          "${CMD[@]}"
         env:
           CLOUD_RUN_SERVICE: odt-tracker
 
