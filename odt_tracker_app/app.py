@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id
+from .database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -214,4 +214,4 @@ if __name__ == '__main__':
     import uvicorn
 
     # When running directly, serve the combined Socket.IO + FastAPI ASGI app
-    uvicorn.run('app:sio_app', host='0.0.0.0', port=8080, reload=True)
+    uvicorn.run('odt_tracker_app.app:sio_app', host='0.0.0.0', port=8080, reload=True)
