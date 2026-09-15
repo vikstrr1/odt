@@ -9,6 +9,8 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from jose import JWTError, jwt
 import socketio
+from google.oauth2 import id_token
+from google.auth.transport import requests as grequests
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,16 +36,10 @@ templates = Jinja2Templates(directory=str(BASE_DIR / 'templates'))
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 sio_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
-# --- Simple JWT-based admin auth ---
-SECRET_KEY = os.environ.get('JWT_SECRET', 'please-set-a-long-secret')
+# --- Auth: prefer Google OAuth2 ID tokens, fallback to simple JWT if ADMIN_EMAIL not set ---
 ALGORITHM = 'HS256'
-ADMIN_USER = os.environ.get('ADMIN_USER', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'password')
-
-def create_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return token
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL')
+SECRET_KEY = os.environ.get('JWT_SECRET', 'please-set-a-long-secret')
 
 async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
     if not authorization:
@@ -51,10 +47,22 @@ async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
     if not authorization.lower().startswith('bearer '):
         raise HTTPException(status_code=401, detail='Invalid authorization header')
     token = authorization.split(' ', 1)[1]
+    # If ADMIN_EMAIL is configured, verify the token as a Google ID token
+    if ADMIN_EMAIL:
+        try:
+            request = grequests.Request()
+            idinfo = id_token.verify_oauth2_token(token, request)
+            email = idinfo.get('email')
+            if email != ADMIN_EMAIL:
+                raise HTTPException(status_code=401, detail='Unauthorized')
+            return idinfo
+        except Exception:
+            raise HTTPException(status_code=401, detail='Invalid Google ID token')
+    # fallback: treat token as app JWT signed with SECRET_KEY
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get('sub')
-        if username != ADMIN_USER:
+        if not username:
             raise HTTPException(status_code=401, detail='Invalid token subject')
         return payload
     except JWTError:
@@ -76,14 +84,8 @@ async def health():
     return {'status': 'ok'}
 
 
-@app.post('/api/login')
-async def login(payload: dict):
-    username = str(payload.get('username', ''))
-    password = str(payload.get('password', ''))
-    if username == ADMIN_USER and password == ADMIN_PASSWORD:
-        token = create_access_token({'sub': username})
-        return {'status': 'ok', 'access_token': token}
-    raise HTTPException(status_code=401, detail='Invalid credentials')
+# Note: authentication is handled by verifying Google ID tokens on each request
+# If you need a server-issued token fallback, set `JWT_SECRET` and issue tokens externally.
 
 
 @app.get('/api/summary')

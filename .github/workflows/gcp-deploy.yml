@@ -30,22 +30,43 @@ jobs:
         run: |
           gcloud auth configure-docker --quiet
 
-      - name: Build frontend (Vite)
-        working-directory: ./frontend
-        run: |
-          npm ci
-          npm run build
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.5.7'
 
-      - name: Copy frontend build into backend static
+      - name: Terraform init & apply (Cloud SQL)
+        working-directory: infra/cloudsql
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+          TF_VAR_project: ${{ secrets.GCP_PROJECT }}
+          TF_VAR_region: ${{ secrets.GCP_REGION }}
+          TF_IN_AUTOMATION: true
         run: |
-          rm -rf odt_tracker_app/static/frontend || true
-          mkdir -p odt_tracker_app/static/frontend
-          cp -r frontend/dist/* odt_tracker_app/static/frontend/
+          echo "$GOOGLE_CREDENTIALS" > /tmp/gcloud-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcloud-key.json
+          terraform init
+          terraform apply -auto-approve -var="project=${{ secrets.GCP_PROJECT }}" -var="region=${{ secrets.GCP_REGION }}"
+          INSTANCE_CONN=$(terraform output -raw instance_connection_name)
+          echo "CLOUD_SQL_INSTANCE=$INSTANCE_CONN" >> $GITHUB_ENV
+
+      - name: Create Cloud Run service account and grant Cloud SQL Client
+        run: |
+          PROJECT=${{ secrets.GCP_PROJECT }}
+          SA_NAME=odt-run-sa
+          SA_EMAIL="$SA_NAME@${PROJECT}.iam.gserviceaccount.com"
+          # create service account if not exists
+          if ! gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT" >/dev/null 2>&1; then
+            gcloud iam service-accounts create "$SA_NAME" --display-name "odt run service account" --project "$PROJECT"
+          fi
+          # grant Cloud SQL Client role so the service account can connect
+          gcloud projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$SA_EMAIL" --role="roles/cloudsql.client" || true
+          echo "CLOUD_RUN_SA=$SA_EMAIL" >> $GITHUB_ENV
 
       - name: Build container image
         run: |
           IMAGE="gcr.io/${{ secrets.GCP_PROJECT }}/${{ env.IMAGE_NAME || 'odt-tracker' }}:${{ github.sha }}"
-          docker build -t "$IMAGE" .
+          docker build -f odt_tracker_app/Dockerfile -t "$IMAGE" .
           docker push "$IMAGE"
         env:
           IMAGE_NAME: odt-tracker
@@ -54,21 +75,19 @@ jobs:
         run: |
           SERVICE=${{ env.CLOUD_RUN_SERVICE || 'odt-tracker' }}
           IMAGE=gcr.io/${{ secrets.GCP_PROJECT }}/odt-tracker:${{ github.sha }}
-          CMD=(gcloud run deploy "$SERVICE" --image "$IMAGE" --region "${{ secrets.GCP_REGION }}" --platform managed --no-allow-unauthenticated)
-          # If Cloud SQL instance is provided, add it to the deploy command
-          if [ -n "${{ secrets.CLOUD_SQL_INSTANCE }}" ]; then
-            CMD+=(--add-cloudsql-instances "${{ secrets.CLOUD_SQL_INSTANCE }}")
+          SA_EMAIL=${CLOUD_RUN_SA}
+          CMD=(gcloud run deploy "$SERVICE" --image "$IMAGE" --region "${{ secrets.GCP_REGION }}" --platform managed --no-allow-unauthenticated --service-account "$SA_EMAIL")
+          # If Cloud SQL instance is provided (from Terraform), add it to the deploy command
+          if [ -n "$CLOUD_SQL_INSTANCE" ]; then
+            CMD+=(--add-cloudsql-instances "$CLOUD_SQL_INSTANCE")
           fi
           # Set runtime environment variables if provided via secrets
           ENVFLAGS=()
           if [ -n "${{ secrets.JWT_SECRET }}" ]; then
             ENVFLAGS+=(--set-env-vars "JWT_SECRET=${{ secrets.JWT_SECRET }}")
           fi
-          if [ -n "${{ secrets.ADMIN_USER }}" ]; then
-            ENVFLAGS+=(--set-env-vars "ADMIN_USER=${{ secrets.ADMIN_USER }}")
-          fi
-          if [ -n "${{ secrets.ADMIN_PASSWORD }}" ]; then
-            ENVFLAGS+=(--set-env-vars "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}")
+          if [ -n "${{ secrets.ADMIN_EMAIL }}" ]; then
+            ENVFLAGS+=(--set-env-vars "ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}")
           fi
           if [ -n "${{ secrets.DATABASE_URL }}" ]; then
             ENVFLAGS+=(--set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}")
