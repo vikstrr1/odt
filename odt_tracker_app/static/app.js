@@ -303,3 +303,15 @@ window.addEventListener('DOMContentLoaded', () => {
   loadGameHistory();
   refreshParticipantOptions();
 });
+
+document.querySelectorAll('.tab-button').forEach((button) => {
+  button.addEventListener('click', () => {
+    const target = button.dataset.tab;
+    document.querySelectorAll('.tab-button').forEach((tabButton) => {
+      tabButton.classList.toggle('active', tabButton === button);
+    });
+    document.querySelectorAll('.tab-panel').forEach((panel) => {
+      panel.classList.toggle('active', panel.id === target);
+    });
+  });
+});
