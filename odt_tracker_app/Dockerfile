@@ -13,4 +13,5 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+# Use the combined Socket.IO + FastAPI ASGI app
+CMD ["uvicorn", "app:sio_app", "--host", "0.0.0.0", "--port", "8080"]
