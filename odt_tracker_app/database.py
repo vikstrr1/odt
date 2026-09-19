@@ -23,13 +23,50 @@ def is_postgres() -> bool:
     return bool(DATABASE_URL)
 
 
+class _PgConn:
+    """Wraps psycopg2 connection so conn.execute() works like sqlite3."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, query, params=None):
+        cur = self._conn.cursor()
+        if params is not None:
+            cur.execute(query, params)
+        else:
+            cur.execute(query)
+        return cur
+
+    def cursor(self):
+        return self._conn.cursor()
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self._conn.commit()
+        else:
+            self._conn.rollback()
+        self._conn.close()
+
+
 def get_connection():
     if is_postgres():
         if psycopg2 is None:
             raise RuntimeError('DATABASE_URL is set, but psycopg2 is not installed. Install psycopg2-binary.')
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         conn.autocommit = False
-        return conn
+        return _PgConn(conn)
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -674,17 +711,37 @@ def table_columns(table_name: str) -> set[str]:
         return {row['name'] for row in rows}
 
 
+def table_exists(table_name: str) -> bool:
+    with get_connection() as conn:
+        if is_postgres():
+            row = conn.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name = %s",
+                (table_name,),
+            ).fetchone()
+            return row is not None
+
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
+        return row is not None
+
+
 def migrate_legacy_schema() -> None:
+    if not table_exists('teams') or not table_exists('participants') or not table_exists('drinks'):
+        return
+
     team_columns = table_columns('teams')
     participant_columns = table_columns('participants')
     drink_columns = table_columns('drinks')
 
-    if not team_columns or 'game_id' not in team_columns or 'game_id' not in participant_columns or 'game_id' not in drink_columns:
+    if 'game_id' not in team_columns or 'game_id' not in participant_columns or 'game_id' not in drink_columns:
         with get_connection() as conn:
             conn.execute('DROP TABLE IF EXISTS drinks')
             conn.execute('DROP TABLE IF EXISTS participants')
             conn.execute('DROP TABLE IF EXISTS teams')
-            conn.execute('DELETE FROM games')
+            if table_exists('games'):
+                conn.execute('DELETE FROM games')
 
 
 def list_games() -> list[dict[str, Any]]:
