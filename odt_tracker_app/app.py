@@ -213,8 +213,10 @@ async def current_game():
     return {'status': 'ok', 'game_id': game_id}
 
 
-if __name__ == '__main__':
-    import uvicorn
 
-    # When running directly, serve the combined Socket.IO + FastAPI ASGI app
-    uvicorn.run('odt_tracker_app.app:sio_app', host='0.0.0.0', port=8080, reload=True)
+
+if __name__ == '__main__':
+    import os
+    import uvicorn
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)

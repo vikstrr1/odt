@@ -264,12 +264,11 @@ def init_db() -> None:
     ensure_seed_data()
 
 
-def ensure_seed_data() -> None:
-    with get_connection() as conn:
+with get_connection() as conn:
         if is_postgres():
-            game_count = conn.execute('SELECT COUNT(*) FROM games').fetchone()[0]
+            game_count = conn.execute('SELECT COUNT(*) AS count FROM games').fetchone()['count']
         else:
-            game_count = conn.execute('SELECT COUNT(*) FROM games').fetchone()[0]
+            game_count = conn.execute('SELECT COUNT(*) AS count FROM games').fetchone()['count']
 
         if game_count == 0:
             game_id = create_game('Game 1')
@@ -277,12 +276,9 @@ def ensure_seed_data() -> None:
             game_id = get_current_game_id()
 
         if is_postgres():
-            team_count = conn.execute('SELECT COUNT(*) FROM teams WHERE game_id = %s', (game_id,)).fetchone()[0]
+            team_count = conn.execute('SELECT COUNT(*) AS count FROM teams WHERE game_id = %s', (game_id,)).fetchone()['count']
         else:
-            team_count = conn.execute('SELECT COUNT(*) FROM teams WHERE game_id = ?', (game_id,)).fetchone()[0]
-
-        if team_count > 0:
-            return
+            team_count = conn.execute('SELECT COUNT(*) AS count FROM teams WHERE game_id = ?', (game_id,)).fetchone()['count']
 
         teams = ['Team 1', 'Team 2', 'Team 3']
         for name in teams:
