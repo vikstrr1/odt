@@ -322,7 +322,7 @@ export default function App() {
               className="header-action"
               onClick={() => setView('dashboard')}
             >
-              &larr; Back to dashboard
+              &larr; Dashboard
             </button>
             <label className="past-games-select">
               <span>Past games</span>
@@ -352,8 +352,8 @@ export default function App() {
           </div>
         </header>
 
-        <section className="panel">
-          <div className="panel-header">
+        <section className="view-shell panel">
+          <div className="view-header">
             <h2>Add participant</h2>
           </div>
           <form
@@ -375,9 +375,10 @@ export default function App() {
               <label htmlFor="participantTeam">Team</label>
               <input
                 id="participantTeam"
-                name="team"
+                name="team_name"
                 type="text"
                 required
+                defaultValue="Team 1"
                 placeholder="Enter participant team"
               />
             </div>
@@ -389,6 +390,7 @@ export default function App() {
                 type="number"
                 step="0.1"
                 required
+                defaultValue={75}
                 placeholder="Enter participant weight"
               />
             </div>
@@ -398,11 +400,10 @@ export default function App() {
                 id="arrivalTime"
                 name="arrival_time"
                 type="datetime-local"
-                required
               />
             </div>
             <button type="submit" className="submit-button">
-              Add participant
+              Save participant
             </button>
           </form>
         </section>
@@ -424,7 +425,7 @@ export default function App() {
               className="header-action"
               onClick={() => setView('dashboard')}
             >
-              &larr; Back to dashboard
+              &larr; Dashboard
             </button>
             <label className="past-games-select">
               <span>Past games</span>
@@ -454,8 +455,8 @@ export default function App() {
           </div>
         </header>
 
-        <section className="panel">
-          <div className="panel-header">
+        <section className="view-shell panel">
+          <div className="view-header">
             <h2>Add drink</h2>
           </div>
           <form
@@ -495,6 +496,7 @@ export default function App() {
                 name="volume_ml"
                 type="number"
                 step="1"
+                defaultValue={500}
                 required
                 placeholder="Enter drink volume"
               />
@@ -506,6 +508,7 @@ export default function App() {
                 name="abv_percent"
                 type="number"
                 step="0.1"
+                defaultValue={5.2}
                 required
                 placeholder="Enter alcohol by volume"
               />
@@ -516,11 +519,10 @@ export default function App() {
                 id="timestamp"
                 name="timestamp"
                 type="datetime-local"
-                required
               />
             </div>
             <button type="submit" className="submit-button">
-              Add drink
+              Save drink
             </button>
           </form>
         </section>
@@ -578,9 +580,7 @@ export default function App() {
         </div>
       </header>
 
-      {view === 'dashboard' ? (
-        <>
-          <section id="summaryCards" className="summary-grid">
+      <section id="summaryCards" className="summary-grid">
             {summaryCards.map((card) => (
               <article key={card.label} className="summary-card">
                 <div className="label">{card.label}</div>
@@ -682,70 +682,6 @@ export default function App() {
               </div>
             </div>
           </section>
-        </>
-      ) : (
-        <section className="view-shell panel">
-          <div className="view-header">
-            <button type="button" className="secondary-button" onClick={() => setView('dashboard')}>
-              ← Back to dashboard
-            </button>
-            <h2>{view === 'player' ? 'Add player' : 'Add drink'}</h2>
-          </div>
-
-          {view === 'player' ? (
-            <form className="stacked-form single-form" onSubmit={handleParticipantSubmit}>
-              <label>
-                Name
-                <input name="name" type="text" required />
-              </label>
-              <label>
-                Team
-                <input name="team_name" type="text" defaultValue="Team 1" required />
-              </label>
-              <label>
-                Weight (kg)
-                <input name="weight_kg" type="number" step="0.1" defaultValue={75} required />
-              </label>
-              <label>
-                Arrival time
-                <input name="arrival_time" type="datetime-local" />
-              </label>
-              <button type="submit" className="submit-button">Save participant</button>
-            </form>
-          ) : (
-            <form className="stacked-form single-form" onSubmit={handleDrinkSubmit}>
-              <label>
-                Participant
-                <select name="participant_name" required defaultValue="">
-                  <option value="">Select participant</option>
-                  {participantOptions.map((participant) => (
-                    <option key={participant.name} value={participant.name}>
-                      {participant.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Beverage
-                <input name="beverage" type="text" required />
-              </label>
-              <label>
-                Volume (ml)
-                <input name="volume_ml" type="number" step="1" defaultValue={500} required />
-              </label>
-              <label>
-                ABV (%)
-                <input name="abv_percent" type="number" step="0.1" defaultValue={5.2} required />
-              </label>
-              <label>
-                Time
-                <input name="timestamp" type="datetime-local" />
-              </label>
-              <button type="submit" className="submit-button">Save drink</button>
-            </form>
-          )}
-        </section>
-      )}
     </div>
   )
 }

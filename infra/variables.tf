@@ -19,7 +19,7 @@ variable "region" {
 variable "wif_pool_id" {
   description = "Workload Identity Pool id"
   type        = string
-  default     = "github-pool"
+  default     = "github-actions-pool"
 }
 
 variable "wif_provider_id" {
