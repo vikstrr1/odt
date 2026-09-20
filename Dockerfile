@@ -23,4 +23,5 @@ RUN mkdir -p ./odt_tracker_app/static/frontend
 COPY --from=frontend-builder /app/frontend/dist ./odt_tracker_app/static/frontend
 
 EXPOSE 8080
+WORKDIR /app/odt_tracker_app
 CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}"]

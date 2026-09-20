@@ -261,10 +261,8 @@ def init_db() -> None:
     if get_current_game_id() is None:
         create_game('Game 1')
 
-    ensure_seed_data()
-
-
-with get_connection() as conn:
+def ensure_seed_data():
+    with get_connection() as conn:
         if is_postgres():
             game_count = conn.execute('SELECT COUNT(*) AS count FROM games').fetchone()['count']
         else:
