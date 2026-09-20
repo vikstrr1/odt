@@ -64,6 +64,6 @@ jobs:
             --region="${{ secrets.GCP_REGION }}" \
             --platform=managed \
             --add-cloudsql-instances="$CLOUDSQL_CONN" \
-            --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ADMIN_EMAIL=ADMIN_EMAIL:latest \
+            --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ADMIN_EMAILS=ADMIN_EMAILS:latest \
             --service-account="${{ secrets.GCP_SA_EMAIL }}" \
             --no-allow-unauthenticated

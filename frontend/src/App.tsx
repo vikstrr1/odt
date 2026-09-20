@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import Chart from 'chart.js/auto'
+import { auth, googleProvider } from './firebase'
+import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth'
 
 type Summary = {
   title?: string
@@ -42,15 +44,18 @@ type Game = {
   is_current?: boolean
 }
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('odt_token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
+const getAuthHeaders = async () => {
+  const user = auth.currentUser
+  if (user) {
+    const token = await user.getIdToken()
+    return { Authorization: `Bearer ${token}` }
+  }
+  return {}
 }
 
 const apiGet = async (url: string) => {
-  const response = await fetch(url, {
-    headers: getAuthHeaders(),
-  })
+  const headers = await getAuthHeaders()
+  const response = await fetch(url, { headers })
   const payload = await response.json()
   if (!response.ok) {
     throw new Error(payload.detail || 'Request failed')
@@ -59,11 +64,12 @@ const apiGet = async (url: string) => {
 }
 
 const apiPost = async (url: string, data: Record<string, unknown>) => {
+  const headers = await getAuthHeaders()
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      ...headers,
     },
     body: JSON.stringify(data),
   })
@@ -81,9 +87,11 @@ const formatLocalDateTimeInput = (date = new Date()) => {
 }
 
 const formatLiters = (value: number | undefined) => `${Number(value || 0).toFixed(2)} L`
-const formatPercent = (value: number | undefined) => `${Number(value || 0).toFixed(3)}`
+const formatMlPerKg = (value: number | undefined) => `${Number(value || 0).toFixed(2)} ml/kg`
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [summary, setSummary] = useState<Summary | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [teamStandings, setTeamStandings] = useState<TeamStanding[]>([])
@@ -93,7 +101,21 @@ export default function App() {
   const [statusBadge, setStatusBadge] = useState('Loading tracker…')
   const [selectedGameId, setSelectedGameId] = useState<number | ''>('')
   const [view, setView] = useState<'dashboard' | 'player' | 'drink'>('dashboard')
+  const [toast, setToast] = useState<string | null>(null)
   const chartRef = useRef<HTMLCanvasElement | null>(null)
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser)
+      setAuthLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
 
   const loadDashboard = async () => {
     try {
@@ -277,6 +299,7 @@ export default function App() {
     applyDefaultTimes()
     await loadDashboard()
     await refreshParticipantOptions()
+    showToast(`${payload.name} added!`)
   }
 
   const handleDrinkSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -299,6 +322,7 @@ export default function App() {
     applyDefaultTimes()
     await loadDashboard()
     await refreshParticipantOptions()
+    showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
   }
 
   const summaryCards = [
@@ -308,9 +332,45 @@ export default function App() {
     { label: 'Participants', value: String(summary?.participant_count || 0), sub: 'Active tracked users' },
   ]
 
+  if (authLoading) {
+    return (
+      <div className="app-shell login-shell">
+        <div className="login-card">
+          <p className="eyebrow">ÖDT Tracker</p>
+          <h1>Loading…</h1>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="app-shell login-shell">
+        <div className="login-card">
+          <p className="eyebrow">ÖDT Tracker</p>
+          <h1>ÖDT Tracker 2025</h1>
+          <p className="login-sub">Sign in to manage participants and drinks</p>
+          <button
+            type="button"
+            className="submit-button login-button"
+            onClick={() => signInWithPopup(auth, googleProvider)}
+          >
+            Sign in with Google
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    setView('dashboard')
+  }
+
   if (view === 'player') {
     return (
       <div className="app-shell">
+        {toast && <div className="toast">{toast}</div>}
         <header className="topbar">
           <div>
             <p className="eyebrow">ÖDT Tracker</p>
@@ -349,6 +409,9 @@ export default function App() {
             <div id="statusBadge" className="status-pill">
               {statusBadge}
             </div>
+            <button type="button" className="header-action" onClick={handleLogout}>
+              Sign out
+            </button>
           </div>
         </header>
 
@@ -414,6 +477,7 @@ export default function App() {
   if (view === 'drink') {
     return (
       <div className="app-shell">
+        {toast && <div className="toast">{toast}</div>}
         <header className="topbar">
           <div>
             <p className="eyebrow">ÖDT Tracker</p>
@@ -452,6 +516,9 @@ export default function App() {
             <div id="statusBadge" className="status-pill">
               {statusBadge}
             </div>
+            <button type="button" className="header-action" onClick={handleLogout}>
+              Sign out
+            </button>
           </div>
         </header>
 
@@ -532,6 +599,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {toast && <div className="toast">{toast}</div>}
       <header className="topbar">
         <div>
           <p className="eyebrow">ÖDT Tracker</p>
@@ -577,6 +645,9 @@ export default function App() {
           <div id="statusBadge" className="status-pill">
             {statusBadge}
           </div>
+          <button type="button" className="header-action" onClick={handleLogout}>
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -623,7 +694,7 @@ export default function App() {
                         <td>{participant.team}</td>
                         <td>{formatLiters(participant.total_volume_l)}</td>
                         <td>{formatLiters(participant.alcohol_amount_l)}</td>
-                        <td>{formatPercent(participant.alcohol_per_kg)}</td>
+                        <td>{formatMlPerKg(participant.alcohol_per_kg)}</td>
                       </tr>
                     ))
                   )}
@@ -682,6 +753,6 @@ export default function App() {
               </div>
             </div>
           </section>
-    </div>
+      </div>
   )
 }

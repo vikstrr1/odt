@@ -6,15 +6,13 @@ from pathlib import Path
 import os
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Header
-from jose import JWTError, jwt
+from fastapi import FastAPI, HTTPException, Request, Header
 import socketio
-from google.oauth2 import id_token
-from google.auth.transport import requests as grequests
+import firebase_admin
+from firebase_admin import auth as fb_auth
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id
 
@@ -28,19 +26,28 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*'],
 )
-app.mount('/static', StaticFiles(directory=str(BASE_DIR / 'static')), name='static')
-templates = Jinja2Templates(directory=str(BASE_DIR / 'templates'))
+app.mount('/assets', StaticFiles(directory=str(BASE_DIR / 'static' / 'frontend' / 'assets')), name='assets')
 
 # --- Socket.IO server (ASGI) ---
-# create an Async server and wrap the FastAPI app with the Socket.IO ASGI app
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 sio_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
-# --- Auth: prefer Google OAuth2 ID tokens, fallback to simple JWT if ADMIN_EMAIL not set ---
-ALGORITHM = 'HS256'
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL')
-SECRET_KEY = os.environ.get('JWT_SECRET', 'please-set-a-long-secret')
+# --- Auth: verify Google ID tokens (Firebase Auth) ---
+ADMIN_EMAILS = [e.strip() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()]
 ALLOW_LOCAL_AUTH = os.environ.get('ALLOW_LOCAL_AUTH', 'true').lower() in {'1', 'true', 'yes', 'on'}
+
+if not firebase_admin._apps:
+    firebase_admin.initialize_app()
+
+
+def _verify_firebase_token(token: str) -> dict:
+    decoded = fb_auth.verify_id_token(token)
+    return {
+        'sub': decoded.get('uid', ''),
+        'email': decoded.get('email', ''),
+        'name': decoded.get('name', ''),
+    }
+
 
 async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
     if not authorization:
@@ -50,26 +57,18 @@ async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
     if not authorization.lower().startswith('bearer '):
         raise HTTPException(status_code=401, detail='Invalid authorization header')
     token = authorization.split(' ', 1)[1]
-    # If ADMIN_EMAIL is configured, verify the token as a Google ID token
-    if ADMIN_EMAIL:
-        try:
-            request = grequests.Request()
-            idinfo = id_token.verify_oauth2_token(token, request)
-            email = idinfo.get('email')
-            if email != ADMIN_EMAIL:
-                raise HTTPException(status_code=401, detail='Unauthorized')
-            return idinfo
-        except Exception:
-            raise HTTPException(status_code=401, detail='Invalid Google ID token')
-    # fallback: treat token as app JWT signed with SECRET_KEY
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get('sub')
-        if not username:
-            raise HTTPException(status_code=401, detail='Invalid token subject')
-        return payload
-    except JWTError:
-        raise HTTPException(status_code=401, detail='Invalid token')
+        return _verify_firebase_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='Invalid Google ID token')
+
+
+async def require_admin(authorization: Optional[str] = Header(None)) -> dict:
+    user = await require_auth(authorization)
+    email = user.get('email', '')
+    if ADMIN_EMAILS and email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail='Admin access required')
+    return user
 
 
 @app.on_event('startup')
@@ -78,8 +77,11 @@ def startup() -> None:
 
 
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse(request, 'index.html', {})
+async def index():
+    react_index = BASE_DIR / 'static' / 'frontend' / 'index.html'
+    if react_index.exists():
+        return HTMLResponse(content=react_index.read_text())
+    return HTMLResponse(content='<h1>ÖDT Tracker</h1><p>Frontend not built.</p>', status_code=500)
 
 
 @app.get('/api/health')
@@ -112,7 +114,7 @@ async def timeline():
 
 
 @app.post('/api/participants')
-async def create_participant(payload: dict, _auth=Depends(require_auth)):
+async def create_participant(payload: dict, _auth=Depends(require_admin)):
     name = str(payload.get('name', '')).strip()
     team_name = str(payload.get('team_name', '')).strip() or 'Team 1'
     weight_kg = float(payload.get('weight_kg', 0.0) or 0.0)
@@ -136,7 +138,7 @@ async def create_participant(payload: dict, _auth=Depends(require_auth)):
 
 
 @app.post('/api/drinks')
-async def create_drink(payload: dict, _auth=Depends(require_auth)):
+async def create_drink(payload: dict, _auth=Depends(require_admin)):
     name = str(payload.get('participant_name', '')).strip()
     beverage = str(payload.get('beverage', '')).strip()
     volume_ml = float(payload.get('volume_ml', 0.0) or 0.0)
@@ -160,7 +162,7 @@ async def create_drink(payload: dict, _auth=Depends(require_auth)):
 
 
 @app.post('/api/reset')
-async def reset(_auth=Depends(require_auth)):
+async def reset(_auth=Depends(require_admin)):
     reset_game()
     try:
         await sio.emit('game_reset', {'summary': get_summary()})
@@ -170,7 +172,7 @@ async def reset(_auth=Depends(require_auth)):
 
 
 @app.post('/api/game/reset')
-async def reset_tracker_game(_auth=Depends(require_auth)):
+async def reset_tracker_game(_auth=Depends(require_admin)):
     reset_game()
     try:
         await sio.emit('game_reset', {'summary': get_summary()})
@@ -190,7 +192,7 @@ async def games():
 
 
 @app.post('/api/game/select')
-async def select_game(payload: dict, _auth=Depends(require_auth)):
+async def select_game(payload: dict, _auth=Depends(require_admin)):
     game_id = int(payload.get('game_id', 0) or 0)
     if game_id <= 0:
         raise HTTPException(status_code=400, detail='A valid game id is required.')

@@ -177,8 +177,8 @@ resource "google_secret_manager_secret" "jwt_secret" {
   }
 }
 
-resource "google_secret_manager_secret" "admin_email" {
-  secret_id = "ADMIN_EMAIL"
+resource "google_secret_manager_secret" "admin_emails" {
+  secret_id = "ADMIN_EMAILS"
   replication {
     auto {}
   }
@@ -194,7 +194,7 @@ resource "google_secret_manager_secret_version" "jwt_secret_v1" {
   secret_data = random_password.jwt_secret.result
 }
 
-resource "google_secret_manager_secret_version" "admin_email_v1" {
-  secret      = google_secret_manager_secret.admin_email.id
-  secret_data = var.admin_email
+resource "google_secret_manager_secret_version" "admin_emails_v1" {
+  secret      = google_secret_manager_secret.admin_emails.id
+  secret_data = var.admin_emails
 }

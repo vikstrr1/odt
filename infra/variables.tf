@@ -40,8 +40,8 @@ variable "github_repo" {
   default     = "odt"
 }
 
-variable "admin_email" {
-  description = "Google account allowed to administer the app (stored in the ADMIN_EMAIL secret)"
+variable "admin_emails" {
+  description = "Comma-separated list of Google accounts allowed to administer the app"
   type        = string
   default     = "rasse.vikstrom@gmail.com"
 }

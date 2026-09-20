@@ -6,10 +6,12 @@ __pycache__/
 .DS_Store
 *.db
 *.sqlite3
+firebase-debug.log
 .env
 .env.*
 node_modules/
 coverage/
+frontend/dist/
 .pytest_cache/
 .mypy_cache/
 .idea/

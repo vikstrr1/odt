@@ -564,12 +564,12 @@ def get_rankings() -> list[dict[str, Any]]:
             volume_ml = float(drink['volume_ml'])
             abv_percent = float(drink['abv_percent'])
             total_volume += volume_ml
-            total_abv += volume_ml * (abv_percent / 100.0) * 0.789
+            total_abv += volume_ml * (abv_percent / 100.0)
 
         total_volume_l = total_volume / 1000.0
-        alcohol_l = total_abv / 1000.0
+        total_alcohol_g = total_abv
         weight_kg = float(row['weight_kg'])
-        alcohol_per_kg = (alcohol_l / weight_kg) if weight_kg else 0.0
+        alcohol_per_kg = (total_alcohol_g / weight_kg) if weight_kg else 0.0
 
         results.append({
             'participant_id': row['id'],
@@ -580,7 +580,7 @@ def get_rankings() -> list[dict[str, Any]]:
             'weight_kg': weight_kg,
             'arrival_time': row['arrival_time'],
             'total_volume_l': round(total_volume_l, 3),
-            'alcohol_amount_l': round(alcohol_l, 3),
+            'alcohol_amount_l': round(total_alcohol_g / 1000.0, 3),
             'alcohol_per_kg': round(alcohol_per_kg, 4),
         })
 
