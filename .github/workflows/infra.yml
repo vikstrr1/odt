@@ -37,6 +37,6 @@ jobs:
           terraform apply -auto-approve \
             -var="project=${{ secrets.GCP_PROJECT }}" \
             -var="project_number=${{ secrets.GCP_PROJECT_NUMBER }}" \
-            -var="region=${{ secrets.GCP_REGION }}" \
+            -var="region=${{ vars.GCP_REGION }}" \
             -var="wif_pool_id=${{ secrets.GCP_WIF_POOL_ID }}" \
             -var="wif_provider_id=${{ secrets.GCP_WIF_PROVIDER_ID }}"
