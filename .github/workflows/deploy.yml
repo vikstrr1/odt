@@ -52,7 +52,7 @@ jobs:
         run: |
           gcloud run deploy odt-2026 \
             --image="$IMAGE" \
-            --region="${{ secrets.GCP_REGION }}" \
+            --region="${{ vars.GCP_REGION }}" \
             --platform=managed \
             --add-cloudsql-instances="$CLOUDSQL_CONN" \
             --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ADMIN_EMAIL=ADMIN_EMAIL:latest \
