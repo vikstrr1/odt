@@ -200,12 +200,6 @@ export default function App() {
     loadGameHistory()
     refreshParticipantOptions()
 
-    useEffect(() => {
-    applyDefaultTimes()
-    loadDashboard()
-    loadGameHistory()
-    refreshParticipantOptions()
-
     // 1. WebSocket Connection with Diagnostics
     const socket: Socket = io(undefined, { path: '/socket.io' })
     
