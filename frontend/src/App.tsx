@@ -254,16 +254,27 @@ export default function App() {
 
     if (chartInstanceRef.current) {
       chartInstanceRef.current.data.labels = timeline.map((entry) => entry.timestamp)
-      chartInstanceRef.current.data.datasets = participantNames.map((name, index) => ({
-        label: name,
-        data: timeline.map((entry) => Number(entry[name] || 0)),
-        borderColor: ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#60a5fa'][index % 6],
-        backgroundColor: 'transparent',
-        pointRadius: 0,
-        borderWidth: 2,
-        tension: 0.2,
-      }))
-      chartInstanceRef.current.update()
+      
+      participantNames.forEach((name, index) => {
+        const existingDataset = chartInstanceRef.current?.data.datasets.find(d => d.label === name)
+        const newData = timeline.map((entry) => Number(entry[name] || 0))
+        
+        if (existingDataset) {
+          existingDataset.data = newData
+        } else {
+          chartInstanceRef.current?.data.datasets.push({
+            label: name,
+            data: newData,
+            borderColor: ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#60a5fa'][index % 6],
+            backgroundColor: 'transparent',
+            pointRadius: 0,
+            borderWidth: 2,
+            tension: 0.2, 
+          })
+        }
+      })
+      
+      chartInstanceRef.current.update('default') 
       return
     }
 
@@ -282,6 +293,10 @@ export default function App() {
         })),
       },
       options: {
+        animation: {
+          duration: 800, 
+          easing: 'easeOutQuart'
+        },
         maintainAspectRatio: false,
         responsive: true,
         interaction: { mode: 'nearest', intersect: false },
@@ -324,6 +339,7 @@ export default function App() {
       await loadDashboard()
       await refreshParticipantOptions()
       showToast(`${payload.name} added!`)
+      setView('dashboard')
     } catch {
       showToast('Failed to add participant', true)
     }
@@ -350,13 +366,14 @@ export default function App() {
       await loadDashboard()
       await refreshParticipantOptions()
       showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
+      setView('dashboard')
     } catch {
       showToast('Failed to log drink', true)
     }
   }
 
   const summaryCards = [
-    { label: 'Leader', value: summary?.leader || '—', sub: 'Current front-runner' },
+    { label: 'Leader', value: summary?.leader || '-', sub: 'Current front-runner' },
     { label: 'Top volume', value: formatLiters(summary?.top_total_volume_l), sub: 'Highest volume' },
     { label: 'Top alcohol', value: `${Number(summary?.top_alcohol_l || 0).toFixed(2)} L`, sub: 'Pure alcohol' },
     { label: 'Participants', value: String(summary?.participant_count || 0), sub: 'Active tracked users' },
@@ -631,7 +648,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {toast && <div className="toast">{toast}</div>}
+      {toast && <div className="toast">{toast.message || String(toast)}</div>}
       <header className="topbar">
         <div>
           <p className="eyebrow">ÖDT Tracker</p>
