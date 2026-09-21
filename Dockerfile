@@ -24,4 +24,4 @@ COPY --from=frontend-builder /app/frontend/dist ./odt_tracker_app/static/fronten
 
 EXPOSE 8080
 WORKDIR /app/odt_tracker_app
-CMD ["uvicorn", "app:sio_app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app:sio_app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "debug"]
