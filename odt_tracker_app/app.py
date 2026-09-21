@@ -6,7 +6,7 @@ from pathlib import Path
 import os
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Request, Header, Depends
 import socketio
 import firebase_admin
 from firebase_admin import auth as fb_auth
