@@ -1,0 +1,42 @@
+name: Infrastructure (Terraform)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+  workflow_dispatch: {}
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WIF_POOL_ID }}/providers/${{ secrets.GCP_WIF_PROVIDER_ID }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform Apply
+        working-directory: infra
+        run: |
+          terraform apply -auto-approve \
+            -var="project=${{ secrets.GCP_PROJECT }}" \
+            -var="project_number=${{ secrets.GCP_PROJECT_NUMBER }}" \
+            -var="region=${{ secrets.GCP_REGION }}" \
+            -var="wif_pool_id=${{ secrets.GCP_WIF_POOL_ID }}" \
+            -var="wif_provider_id=${{ secrets.GCP_WIF_PROVIDER_ID }}"
