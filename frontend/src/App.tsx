@@ -102,6 +102,7 @@ export default function App() {
   const [selectedGameId, setSelectedGameId] = useState<number | ''>('')
   const [view, setView] = useState<'dashboard' | 'player' | 'drink'>('dashboard')
   const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null)
+  const [formKey, setFormKey] = useState(0)
   const chartRef = useRef<HTMLCanvasElement | null>(null)
 
   const showToast = (msg: string, isError = false) => {
@@ -296,8 +297,7 @@ export default function App() {
 
     try {
       await apiPost('/api/participants', payload)
-      event.currentTarget.reset()
-      applyDefaultTimes()
+      setFormKey((k) => k + 1)
       await loadDashboard()
       await refreshParticipantOptions()
       showToast(`${payload.name} added!`)
@@ -323,8 +323,7 @@ export default function App() {
 
     try {
       await apiPost('/api/drinks', payload)
-      event.currentTarget.reset()
-      applyDefaultTimes()
+      setFormKey((k) => k + 1)
       await loadDashboard()
       await refreshParticipantOptions()
       showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
@@ -428,6 +427,7 @@ export default function App() {
             <h2>Add participant</h2>
           </div>
           <form
+            key={`participant-${formKey}`}
             id="participantForm"
             className="stacked-form single-form"
             onSubmit={handleParticipantSubmit}
@@ -535,6 +535,7 @@ export default function App() {
             <h2>Add drink</h2>
           </div>
           <form
+            key={`drink-${formKey}`}
             id="drinkForm"
             className="stacked-form single-form"
             onSubmit={handleDrinkSubmit}
