@@ -1,8 +1,11 @@
-name: Deploy to GCP (Terraform + Build + Cloud Run)
+name: Application Build & Deploy
 
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'infra/**'
+      - '**.md'
   workflow_dispatch: {}
 
 jobs:
@@ -16,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Authenticate to GCP with Workload Identity
+      - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WIF_POOL_ID }}/providers/${{ secrets.GCP_WIF_PROVIDER_ID }}
@@ -26,28 +29,9 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
-          install_components: cloud_sql_proxy
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        working-directory: infra
-        run: terraform init -input=false
-
-      - name: Terraform Apply
-        working-directory: infra
-        run: |
-          terraform apply -auto-approve \
-            -var="project=${{ secrets.GCP_PROJECT }}" \
-            -var="project_number=${{ secrets.GCP_PROJECT_NUMBER }}" \
-            -var="region=${{ secrets.GCP_REGION }}" \
-            -var="wif_pool_id=${{ secrets.GCP_WIF_POOL_ID }}" \
-            -var="wif_provider_id=${{ secrets.GCP_WIF_PROVIDER_ID }}"
-
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+      - name: Configure Docker Auth
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
 
       - name: Build and push Docker image
         env:
@@ -58,10 +42,14 @@ jobs:
           docker push $IMAGE
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
+      - name: Get Cloud SQL Connection Name
+        run: |
+          # Dynamically fetch the connection string for the database in this project
+          CLOUDSQL_CONN=$(gcloud sql instances list --format="value(connectionName)" --limit=1)
+          echo "CLOUDSQL_CONN=$CLOUDSQL_CONN" >> $GITHUB_ENV
+
       - name: Deploy to Cloud Run
         run: |
-          CLOUDSQL_CONN=$(terraform -chdir=infra output -raw cloudsql_instance_connection_name)
-          
           gcloud run deploy odt-2026 \
             --image="$IMAGE" \
             --region="${{ secrets.GCP_REGION }}" \
