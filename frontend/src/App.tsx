@@ -104,6 +104,7 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null)
   const [formKey, setFormKey] = useState(0)
   const chartRef = useRef<HTMLCanvasElement | null>(null)
+  const chartInstanceRef = useRef<Chart | null>(null)
 
   const showToast = (msg: string, isError = false) => {
     setToast({ message: msg, isError })
@@ -242,7 +243,23 @@ export default function App() {
       return
     }
 
-    const chart = new Chart(chartRef.current, {
+    if (chartInstanceRef.current) {
+      const chart = chartInstanceRef.current
+      chart.data.labels = timeline.map((entry) => entry.timestamp)
+      chart.data.datasets = participantNames.map((name, index) => ({
+        label: name,
+        data: timeline.map((entry) => Number(entry[name] || 0)),
+        borderColor: ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#60a5fa'][index % 6],
+        backgroundColor: 'transparent',
+        pointRadius: 0,
+        borderWidth: 2,
+        tension: 0.2,
+      }))
+      chart.update()
+      return
+    }
+
+    chartInstanceRef.current = new Chart(chartRef.current, {
       type: 'line',
       data: {
         labels: timeline.map((entry) => entry.timestamp),
@@ -278,8 +295,11 @@ export default function App() {
       },
     })
 
-    return () => chart.destroy()
-  }, [participantNames, timeline])
+    return () => {
+      chartInstanceRef.current?.destroy()
+      chartInstanceRef.current = null
+    }
+  }, [participantNames, timeline, view])
 
   const handleParticipantSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
