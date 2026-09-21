@@ -248,7 +248,7 @@ export default function App() {
   }, [view])
 
   useEffect(() => {
-    if (!chartRef.current || participantNames.length === 0 || timeline.length === 0) {
+    if (view !== 'dashboard' || !chartRef.current || participantNames.length === 0 || timeline.length === 0) {
       return
     }
 
@@ -317,7 +317,7 @@ export default function App() {
         },
       },
     })
-  }, [participantNames, timeline])
+  }, [participantNames, timeline, view])
 
   const handleParticipantSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -339,7 +339,6 @@ export default function App() {
       await loadDashboard()
       await refreshParticipantOptions()
       showToast(`${payload.name} added!`)
-      setView('dashboard')
     } catch {
       showToast('Failed to add participant', true)
     }
@@ -366,7 +365,6 @@ export default function App() {
       await loadDashboard()
       await refreshParticipantOptions()
       showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
-      setView('dashboard')
     } catch {
       showToast('Failed to log drink', true)
     }
