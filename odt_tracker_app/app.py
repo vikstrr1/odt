@@ -80,7 +80,10 @@ def startup() -> None:
 async def index():
     react_index = BASE_DIR / 'static' / 'frontend' / 'index.html'
     if react_index.exists():
-        return HTMLResponse(content=react_index.read_text())
+        return HTMLResponse(
+            content=react_index.read_text(),
+            headers={'Cache-Control': 'no-cache, no-store, must-revalidate'},
+        )
     return HTMLResponse(content='<h1>ÖDT Tracker</h1><p>Frontend not built.</p>', status_code=500)
 
 

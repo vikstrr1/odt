@@ -40,3 +40,4 @@ jobs:
             -var="region=${{ vars.GCP_REGION }}" \
             -var="wif_pool_id=${{ secrets.GCP_WIF_POOL_ID }}" \
             -var="wif_provider_id=${{ secrets.GCP_WIF_PROVIDER_ID }}"
+            -var="admin_emails=${{ secrets.ADMIN_EMAILS }}"

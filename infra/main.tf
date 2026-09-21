@@ -24,6 +24,17 @@ locals {
   project_number = var.project_number != "" ? var.project_number : data.google_project.project.number
 }
 
+# ---- Terraform State Bucket ----
+resource "google_storage_bucket" "terraform_state" {
+  name          = "${var.project}-terraform-state"
+  location      = var.region
+  force_destroy = false
+  
+  versioning {
+    enabled = true
+  }
+}
+
 # ---- Enable required GCP APIs ----
 resource "google_project_service" "artifact_registry" {
   project = var.project

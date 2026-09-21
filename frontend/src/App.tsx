@@ -101,11 +101,11 @@ export default function App() {
   const [statusBadge, setStatusBadge] = useState('Loading tracker…')
   const [selectedGameId, setSelectedGameId] = useState<number | ''>('')
   const [view, setView] = useState<'dashboard' | 'player' | 'drink'>('dashboard')
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null)
   const chartRef = useRef<HTMLCanvasElement | null>(null)
 
-  const showToast = (msg: string) => {
-    setToast(msg)
+  const showToast = (msg: string, isError = false) => {
+    setToast({ message: msg, isError })
     setTimeout(() => setToast(null), 3000)
   }
 
@@ -294,12 +294,16 @@ export default function App() {
       payload.arrival_time = new Date(payload.arrival_time).toISOString()
     }
 
-    await apiPost('/api/participants', payload)
-    event.currentTarget.reset()
-    applyDefaultTimes()
-    await loadDashboard()
-    await refreshParticipantOptions()
-    showToast(`${payload.name} added!`)
+    try {
+      await apiPost('/api/participants', payload)
+      event.currentTarget.reset()
+      applyDefaultTimes()
+      await loadDashboard()
+      await refreshParticipantOptions()
+      showToast(`${payload.name} added!`)
+    } catch {
+      showToast('Failed to add participant', true)
+    }
   }
 
   const handleDrinkSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -317,12 +321,16 @@ export default function App() {
       payload.timestamp = new Date(payload.timestamp).toISOString()
     }
 
-    await apiPost('/api/drinks', payload)
-    event.currentTarget.reset()
-    applyDefaultTimes()
-    await loadDashboard()
-    await refreshParticipantOptions()
-    showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
+    try {
+      await apiPost('/api/drinks', payload)
+      event.currentTarget.reset()
+      applyDefaultTimes()
+      await loadDashboard()
+      await refreshParticipantOptions()
+      showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
+    } catch {
+      showToast('Failed to log drink', true)
+    }
   }
 
   const summaryCards = [
@@ -370,7 +378,7 @@ export default function App() {
   if (view === 'player') {
     return (
       <div className="app-shell">
-        {toast && <div className="toast">{toast}</div>}
+        {toast && <div className={`toast ${toast.isError ? 'toast-error' : ''}`}>{toast.message}</div>}
         <header className="topbar">
           <div>
             <p className="eyebrow">ÖDT Tracker</p>
@@ -477,7 +485,7 @@ export default function App() {
   if (view === 'drink') {
     return (
       <div className="app-shell">
-        {toast && <div className="toast">{toast}</div>}
+        {toast && <div className={`toast ${toast.isError ? 'toast-error' : ''}`}>{toast.message}</div>}
         <header className="topbar">
           <div>
             <p className="eyebrow">ÖDT Tracker</p>

@@ -565,6 +565,11 @@ canvas {
   animation: toast-in 0.3s ease, toast-out 0.3s ease 2.7s;
 }
 
+.toast-error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+}
+
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
