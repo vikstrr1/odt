@@ -43,5 +43,5 @@ variable "github_repo" {
 variable "admin_emails" {
   description = "Comma-separated list of Google accounts allowed to administer the app"
   type        = string
-  default     = "rasse.vikstrom@gmail.com"
+  default     = "rasse.vikstrom@gmail.com,Victorheimonen@gmail.com"
 }
