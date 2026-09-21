@@ -239,14 +239,22 @@ export default function App() {
   }, [timeline])
 
   useEffect(() => {
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy()
+        chartInstanceRef.current = null
+      }
+    }
+  }, [view])
+
+  useEffect(() => {
     if (!chartRef.current || participantNames.length === 0 || timeline.length === 0) {
       return
     }
 
     if (chartInstanceRef.current) {
-      const chart = chartInstanceRef.current
-      chart.data.labels = timeline.map((entry) => entry.timestamp)
-      chart.data.datasets = participantNames.map((name, index) => ({
+      chartInstanceRef.current.data.labels = timeline.map((entry) => entry.timestamp)
+      chartInstanceRef.current.data.datasets = participantNames.map((name, index) => ({
         label: name,
         data: timeline.map((entry) => Number(entry[name] || 0)),
         borderColor: ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#60a5fa'][index % 6],
@@ -255,7 +263,7 @@ export default function App() {
         borderWidth: 2,
         tension: 0.2,
       }))
-      chart.update()
+      chartInstanceRef.current.update()
       return
     }
 
@@ -294,12 +302,7 @@ export default function App() {
         },
       },
     })
-
-    return () => {
-      chartInstanceRef.current?.destroy()
-      chartInstanceRef.current = null
-    }
-  }, [participantNames, timeline, view])
+  }, [participantNames, timeline])
 
   const handleParticipantSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
