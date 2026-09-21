@@ -9,6 +9,11 @@ terraform {
       version = "~> 3.6"
     }
   }
+
+  backend "gcs" {
+    bucket  = "odt-project-12345-terraform-state"
+    prefix  = "terraform/state"
+  }
 }
 
 provider "google" {
