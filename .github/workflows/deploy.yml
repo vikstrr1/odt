@@ -56,5 +56,7 @@ jobs:
             --platform=managed \
             --add-cloudsql-instances="$CLOUDSQL_CONN" \
             --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ADMIN_EMAIL=ADMIN_EMAIL:latest \
+            --set-env-vars=GCP_PROJECT="${{ secrets.GCP_PROJECT }}" \
             --service-account="${{ secrets.GCP_SA_EMAIL }}" \
             --no-allow-unauthenticated
+
