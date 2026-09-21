@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 
 import os
-from typing import Optional
+from typing import Optional, Any
 
 from fastapi import FastAPI, HTTPException, Request, Header, Depends
 import socketio
@@ -71,6 +72,14 @@ async def require_admin(authorization: Optional[str] = Header(None)) -> dict:
     return user
 
 
+# --- Helper: Ensure JSON Serializable ---
+# This forces SQLite rows or dict-like objects into pure Python dicts/types
+def sanitize_for_socket(data: Any) -> Any:
+    # A fast, bulletproof way to strip out non-serializable objects (like sqlite3.Row)
+    # by bouncing the data through the standard JSON parser.
+    return json.loads(json.dumps(data, default=str))
+
+
 @app.on_event('startup')
 def startup() -> None:
     init_db()
@@ -90,10 +99,6 @@ async def index():
 @app.get('/api/health')
 async def health():
     return {'status': 'ok'}
-
-
-# Note: authentication is handled by verifying Google ID tokens on each request
-# If you need a server-issued token fallback, set `JWT_SECRET` and issue tokens externally.
 
 
 @app.get('/api/summary')
@@ -130,13 +135,17 @@ async def create_participant(payload: dict, _auth=Depends(require_admin)):
 
     try:
         participant = add_participant(name=name, team_name=team_name, weight_kg=weight_kg, arrival_time=arrival_time)
-        # broadcast update to websocket clients
+        
+        # Fixed Socket Emission
         try:
-            await sio.emit('participant_created', {'participant': participant, 'summary': get_summary()})
-        except Exception:
-            pass
+            safe_payload = sanitize_for_socket({'participant': participant, 'summary': get_summary()})
+            await sio.emit('participant_created', safe_payload)
+        except Exception as e:
+            print(f"Socket emit failed on participant_created: {e}")
+            
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+        
     return {'status': 'ok', 'participant': participant}
 
 
@@ -155,12 +164,17 @@ async def create_drink(payload: dict, _auth=Depends(require_admin)):
 
     try:
         drink = add_drink(participant_name=name, beverage=beverage, volume_ml=volume_ml, abv_percent=abv_percent, timestamp=timestamp)
+        
+        # Fixed Socket Emission
         try:
-            await sio.emit('drink_logged', {'drink': drink, 'summary': get_summary()})
-        except Exception:
-            pass
+            safe_payload = sanitize_for_socket({'drink': drink, 'summary': get_summary()})
+            await sio.emit('drink_logged', safe_payload)
+        except Exception as e:
+             print(f"Socket emit failed on drink_logged: {e}")
+             
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+        
     return {'status': 'ok', 'drink': drink}
 
 
@@ -168,9 +182,10 @@ async def create_drink(payload: dict, _auth=Depends(require_admin)):
 async def reset(_auth=Depends(require_admin)):
     reset_game()
     try:
-        await sio.emit('game_reset', {'summary': get_summary()})
-    except Exception:
-        pass
+        safe_payload = sanitize_for_socket({'summary': get_summary()})
+        await sio.emit('game_reset', safe_payload)
+    except Exception as e:
+         print(f"Socket emit failed on game_reset: {e}")
     return {'status': 'ok'}
 
 
@@ -178,9 +193,10 @@ async def reset(_auth=Depends(require_admin)):
 async def reset_tracker_game(_auth=Depends(require_admin)):
     reset_game()
     try:
-        await sio.emit('game_reset', {'summary': get_summary()})
-    except Exception:
-        pass
+        safe_payload = sanitize_for_socket({'summary': get_summary()})
+        await sio.emit('game_reset', safe_payload)
+    except Exception as e:
+        print(f"Socket emit failed on game_reset: {e}")
     return {'status': 'ok', 'message': 'New game started.'}
 
 
@@ -203,10 +219,13 @@ async def select_game(payload: dict, _auth=Depends(require_admin)):
         set_current_game_id(game_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+        
     try:
-        await sio.emit('game_selected', {'game_id': game_id, 'summary': get_summary()})
-    except Exception:
-        pass
+        safe_payload = sanitize_for_socket({'game_id': game_id, 'summary': get_summary()})
+        await sio.emit('game_selected', safe_payload)
+    except Exception as e:
+        print(f"Socket emit failed on game_selected: {e}")
+        
     return {'status': 'ok', 'game_id': game_id}
 
 
@@ -216,8 +235,6 @@ async def current_game():
     if game_id is None:
         raise HTTPException(status_code=404, detail='No current game found.')
     return {'status': 'ok', 'game_id': game_id}
-
-
 
 
 if __name__ == '__main__':

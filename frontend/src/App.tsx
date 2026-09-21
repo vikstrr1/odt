@@ -200,31 +200,39 @@ export default function App() {
     loadGameHistory()
     refreshParticipantOptions()
 
+    useEffect(() => {
+    applyDefaultTimes()
+    loadDashboard()
+    loadGameHistory()
+    refreshParticipantOptions()
+
+    // 1. WebSocket Connection with Diagnostics
     const socket: Socket = io(undefined, { path: '/socket.io' })
-    socket.on('connect', () => console.log('socket connected'))
-    socket.on('update', () => {
+    
+    socket.on('connect', () => console.log('🟢 WebSocket Connected!'))
+    socket.on('connect_error', (err) => console.error('🔴 WebSocket Error:', err.message))
+    
+    const handleRemoteUpdate = () => {
+      console.log('⚡ Socket event received, refreshing data...')
       void loadDashboard()
       void refreshParticipantOptions()
-    })
-    socket.on('participant_created', () => {
+    }
+
+    socket.on('update', handleRemoteUpdate)
+    socket.on('participant_created', handleRemoteUpdate)
+    socket.on('drink_logged', handleRemoteUpdate)
+    socket.on('game_selected', handleRemoteUpdate)
+    socket.on('game_reset', handleRemoteUpdate)
+
+    // 2. Bulletproof Fallback: Auto-refresh in the background every 10 seconds
+    const pollInterval = setInterval(() => {
       void loadDashboard()
       void refreshParticipantOptions()
-    })
-    socket.on('drink_logged', () => {
-      void loadDashboard()
-      void refreshParticipantOptions()
-    })
-    socket.on('game_selected', () => {
-      void loadDashboard()
-      void refreshParticipantOptions()
-    })
-    socket.on('game_reset', () => {
-      void loadDashboard()
-      void refreshParticipantOptions()
-    })
+    }, 10000)
 
     return () => {
       socket.disconnect()
+      clearInterval(pollInterval)
     }
   }, [])
 
