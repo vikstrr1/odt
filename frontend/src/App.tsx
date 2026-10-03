@@ -103,6 +103,7 @@ export default function App() {
   const [view, setView] = useState<'dashboard' | 'player' | 'drink'>('dashboard')
   const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null)
   const [formKey, setFormKey] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
   const chartRef = useRef<HTMLCanvasElement | null>(null)
   const chartInstanceRef = useRef<Chart | null>(null)
 
@@ -112,9 +113,22 @@ export default function App() {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       setAuthLoading(false)
+
+      if (!firebaseUser) {
+        setIsAdmin(false)
+        return
+      }
+
+      try {
+        const payload = await apiGet('/api/me')
+        setIsAdmin(Boolean(payload?.user?.is_admin))
+      } catch (error) {
+        console.error('Failed to fetch user role', error)
+        setIsAdmin(false)
+      }
     })
     return () => unsubscribe()
   }, [])
@@ -414,7 +428,37 @@ export default function App() {
     setView('dashboard')
   }
 
+  const canManageGame = isAdmin
+
   if (view === 'player') {
+    if (!canManageGame) {
+      return (
+        <div className="app-shell">
+          {toast && <div className={`toast ${toast.isError ? 'toast-error' : ''}`}>{toast.message}</div>}
+          <header className="topbar">
+            <div>
+              <p className="eyebrow">ÖDT Tracker</p>
+              <h1>{summary?.title || '2025 dashboard'}</h1>
+            </div>
+            <div className="header-actions">
+              <button type="button" className="header-action" onClick={() => setView('dashboard')}>
+                &larr; Dashboard
+              </button>
+              <button type="button" className="header-action" onClick={handleLogout}>
+                Sign out
+              </button>
+            </div>
+          </header>
+          <section className="view-shell panel">
+            <div className="view-header">
+              <h2>Access denied</h2>
+            </div>
+            <p>This page is only available to admins.</p>
+          </section>
+        </div>
+      )
+    }
+
     return (
       <div className="app-shell">
         {toast && <div className={`toast ${toast.isError ? 'toast-error' : ''}`}>{toast.message}</div>}
@@ -523,6 +567,34 @@ export default function App() {
   }
 
   if (view === 'drink') {
+    if (!canManageGame) {
+      return (
+        <div className="app-shell">
+          {toast && <div className={`toast ${toast.isError ? 'toast-error' : ''}`}>{toast.message}</div>}
+          <header className="topbar">
+            <div>
+              <p className="eyebrow">ÖDT Tracker</p>
+              <h1>{summary?.title || '2025 dashboard'}</h1>
+            </div>
+            <div className="header-actions">
+              <button type="button" className="header-action" onClick={() => setView('dashboard')}>
+                &larr; Dashboard
+              </button>
+              <button type="button" className="header-action" onClick={handleLogout}>
+                Sign out
+              </button>
+            </div>
+          </header>
+          <section className="view-shell panel">
+            <div className="view-header">
+              <h2>Access denied</h2>
+            </div>
+            <p>This page is only available to admins.</p>
+          </section>
+        </div>
+      )
+    }
+
     return (
       <div className="app-shell">
         {toast && <div className={`toast ${toast.isError ? 'toast-error' : ''}`}>{toast.message}</div>}
@@ -655,20 +727,24 @@ export default function App() {
           <h1>{summary?.title || '2025 dashboard'}</h1>
         </div>
         <div className="header-actions">
-          <button
-            type="button"
-            className={`header-action ${view === 'player' ? 'active' : ''}`}
-            onClick={() => setView('player')}
-          >
-            Add player
-          </button>
-          <button
-            type="button"
-            className={`header-action ${view === 'drink' ? 'active' : ''}`}
-            onClick={() => setView('drink')}
-          >
-            Add drink
-          </button>
+          {canManageGame && (
+            <>
+              <button
+                type="button"
+                className={`header-action ${view === 'player' ? 'active' : ''}`}
+                onClick={() => setView('player')}
+              >
+                Add player
+              </button>
+              <button
+                type="button"
+                className={`header-action ${view === 'drink' ? 'active' : ''}`}
+                onClick={() => setView('drink')}
+              >
+                Add drink
+              </button>
+            </>
+          )}
           <label className="past-games-select">
             <span>Past games</span>
             <select
@@ -688,9 +764,11 @@ export default function App() {
               ))}
             </select>
           </label>
-          <button id="resetGameButton" type="button" onClick={resetGame}>
-            New game
-          </button>
+          {canManageGame && (
+            <button id="resetGameButton" type="button" onClick={resetGame}>
+              New game
+            </button>
+          )}
           <div id="statusBadge" className="status-pill">
             {statusBadge}
           </div>

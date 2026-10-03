@@ -237,6 +237,22 @@ async def current_game():
     return {'status': 'ok', 'game_id': game_id}
 
 
+@app.get('/api/me')
+async def me(authorization: Optional[str] = Header(None)):
+    user = await require_auth(authorization)
+    email = (user.get('email') or '').lower()
+    allowed_admins = {admin.lower() for admin in ADMIN_EMAILS}
+    is_admin = not ADMIN_EMAILS or email in allowed_admins
+    return {
+        'status': 'ok',
+        'user': {
+            'email': user.get('email', ''),
+            'name': user.get('name', ''),
+            'is_admin': is_admin,
+        },
+    }
+
+
 if __name__ == '__main__':
     import os
     import uvicorn
