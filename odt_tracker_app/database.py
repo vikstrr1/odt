@@ -675,6 +675,51 @@ def reset_game() -> None:
 def get_summary() -> dict[str, Any]:
     rankings = get_rankings()
     teams = get_team_standings()
+    game_id = get_current_game_id()
+
+    slowest_name = None
+    slowest_minutes = 0.0
+
+    with get_connection() as conn:
+        if is_postgres():
+            rows = conn.execute(
+                '''
+                SELECT p.id, p.name, MAX(d.timestamp) AS last_drink_ts
+                FROM participants p
+                LEFT JOIN drinks d ON d.participant_id = p.id AND d.game_id = %s
+                WHERE p.game_id = %s
+                GROUP BY p.id, p.name
+                ORDER BY last_drink_ts ASC NULLS FIRST
+                ''',
+                (game_id, game_id),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                '''
+                SELECT p.id, p.name, MAX(d.timestamp) AS last_drink_ts
+                FROM participants p
+                LEFT JOIN drinks d ON d.participant_id = p.id AND d.game_id = ?
+                WHERE p.game_id = ?
+                GROUP BY p.id, p.name
+                ORDER BY last_drink_ts ASC
+                ''',
+                (game_id, game_id),
+            ).fetchall()
+
+    if rows:
+        now = datetime.utcnow()
+        for row in rows:
+            last_drink_ts = row['last_drink_ts']
+            if last_drink_ts is None:
+                last_drink_dt = datetime.fromisoformat(row['arrival_time']) if row.get('arrival_time') else now
+            else:
+                last_drink_dt = datetime.fromisoformat(last_drink_ts)
+
+            minutes_since = (now - last_drink_dt).total_seconds() / 60.0
+            if minutes_since > slowest_minutes:
+                slowest_minutes = minutes_since
+                slowest_name = row['name']
+
     payload = {
         'title': 'ÖDT Tracker 2025',
         'leader': rankings[0]['name'] if rankings else None,
@@ -683,6 +728,8 @@ def get_summary() -> dict[str, Any]:
         'team_count': len(teams),
         'top_total_volume_l': rankings[0]['total_volume_l'] if rankings else 0.0,
         'top_alcohol_l': rankings[0]['alcohol_amount_l'] if rankings else 0.0,
+        'longest_idle_name': slowest_name,
+        'longest_idle_minutes': round(slowest_minutes, 1),
     }
 
     return payload
