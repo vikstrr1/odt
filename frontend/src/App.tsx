@@ -390,7 +390,6 @@ export default function App() {
     { label: 'Leader', value: summary?.leader || '-', sub: 'Current front-runner' },
     { label: 'Top volume', value: formatLiters(summary?.top_total_volume_l), sub: 'Highest volume' },
     { label: 'Top alcohol', value: `${Number(summary?.top_alcohol_l || 0).toFixed(2)} L`, sub: 'Pure alcohol' },
-    { label: 'Participants', value: String(summary?.participant_count || 0), sub: 'Active tracked users' },
     {
       label: 'Longest idle',
       value: summary?.longest_idle_name || '-',
@@ -795,6 +794,19 @@ export default function App() {
             ))}
           </section>
 
+          <section className="panel full-width-panel">
+            <div className="panel-header">
+              <h2>Usage trend</h2>
+            </div>
+            <div className="chart-wrap">
+              {timeline.length === 0 ? (
+                <div className="empty-state">No drink data yet</div>
+              ) : (
+                <canvas ref={chartRef} id="timelineChart" />
+              )}
+            </div>
+          </section>
+
           <section className="panel">
             <div className="panel-header">
               <h2>Participant ranking</h2>
@@ -876,14 +888,35 @@ export default function App() {
 
             <div className="panel">
               <div className="panel-header">
-                <h2>Usage trend</h2>
+                <h2>Summary</h2>
               </div>
-              <div style={{ height: 280 }}>
-                {timeline.length === 0 ? (
-                  <div className="empty-state">No drink data yet</div>
-                ) : (
-                  <canvas ref={chartRef} id="timelineChart" />
-                )}
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Metric</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Leader</td>
+                      <td>{summary?.leader || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td>Team leader</td>
+                      <td>{summary?.team_leader || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td>Participants</td>
+                      <td>{summary?.participant_count || 0}</td>
+                    </tr>
+                    <tr>
+                      <td>Teams</td>
+                      <td>{summary?.team_count || 0}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </section>

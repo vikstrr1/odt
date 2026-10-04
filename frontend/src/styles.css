@@ -200,6 +200,21 @@ h2 {
   margin-bottom: 22px;
 }
 
+.full-width-panel {
+  margin-bottom: 20px;
+}
+
+.chart-wrap {
+  width: 100%;
+  min-height: 340px;
+}
+
+canvas {
+  width: 100% !important;
+  height: 340px !important;
+  display: block;
+}
+
 .summary-card,
 .panel,
 .view-shell {
@@ -417,7 +432,7 @@ tbody tr:hover {
 
 canvas {
   width: 100% !important;
-  height: 300px !important;
+  height: 340px !important;
   display: block;
 }
 
