@@ -391,6 +391,13 @@ export default function App() {
     { label: 'Top volume', value: formatLiters(summary?.top_total_volume_l), sub: 'Highest volume' },
     { label: 'Top alcohol', value: `${Number(summary?.top_alcohol_l || 0).toFixed(2)} L`, sub: 'Pure alcohol' },
     { label: 'Participants', value: String(summary?.participant_count || 0), sub: 'Active tracked users' },
+    {
+      label: 'Longest idle',
+      value: summary?.longest_idle_name || '-',
+      sub: summary?.longest_idle_name
+        ? `${Number(summary.longest_idle_minutes || 0).toFixed(0)} min since last drink`
+        : 'No drink history yet',
+    },
   ]
 
   if (authLoading) {
