@@ -829,9 +829,10 @@ export default function App() {
                 <thead>
                   <tr>
                     <th>Rank</th>
-                    <th>Drinks</th>
+                    
                     <th>Participant</th>
                     <th>Team</th>
+                    <th>Drinks</th>
                     <th>Total volume (L)</th>
                     <th>Alcohol (L)</th>
                     <th>Alcohol / kg</th>
@@ -850,9 +851,9 @@ export default function App() {
                         <td>
                           <span className="rank-badge">{index + 1}</span>
                         </td>
-                          <td>{drinkCounts[(participant as any).participant_id || (participant as any).id] || 0}</td>
                         <td>{participant.name}</td>
                         <td>{participant.team}</td>
+                        <td>{drinkCounts[(participant as any).participant_id || (participant as any).id] || 0}</td>
                         <td>{formatLiters(participant.total_volume_l)}</td>
                         <td>{formatLiters(participant.alcohol_amount_l)}</td>
                         <td>{formatMlPerKg(participant.alcohol_per_kg)}</td>
