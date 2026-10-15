@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -707,13 +707,24 @@ def get_summary() -> dict[str, Any]:
             ).fetchall()
 
     if rows:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for row in rows:
             last_drink_ts = row['last_drink_ts']
             if last_drink_ts is None:
-                last_drink_dt = datetime.fromisoformat(row['arrival_time']) if row.get('arrival_time') else now
+                if row.get('arrival_time'):
+                    last_drink_dt = datetime.fromisoformat(row['arrival_time'])
+                else:
+                    last_drink_dt = now
             else:
-                last_drink_dt = datetime.fromisoformat(last_drink_ts)
+                # DB value may be a string (sqlite) or a datetime (Postgres). Handle both.
+                if isinstance(last_drink_ts, str):
+                    last_drink_dt = datetime.fromisoformat(last_drink_ts)
+                else:
+                    last_drink_dt = last_drink_ts
+
+            # Ensure datetime is timezone-aware (use UTC) so subtraction works reliably
+            if last_drink_dt.tzinfo is None:
+                last_drink_dt = last_drink_dt.replace(tzinfo=timezone.utc)
 
             minutes_since = (now - last_drink_dt).total_seconds() / 60.0
             if minutes_since > slowest_minutes:
@@ -849,3 +860,21 @@ def get_game_summary(game_id: int) -> dict[str, Any]:
         'total_volume_l': total_volume / 1000.0,
         'total_alcohol_l': total_abv / 1000.0,
     }
+
+
+def get_beverages() -> list[str]:
+    """Return distinct beverage names for the current game, sorted alphabetically."""
+    game_id = get_current_game_id()
+    with get_connection() as conn:
+        if is_postgres():
+            rows = conn.execute(
+                'SELECT DISTINCT beverage FROM drinks WHERE game_id = %s ORDER BY beverage',
+                (game_id,),
+            ).fetchall()
+            return [row['beverage'] for row in rows]
+
+        rows = conn.execute(
+            'SELECT DISTINCT beverage FROM drinks WHERE game_id = ? ORDER BY beverage',
+            (game_id,),
+        ).fetchall()
+        return [row['beverage'] for row in rows]

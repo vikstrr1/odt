@@ -98,6 +98,7 @@ export default function App() {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])
   const [games, setGames] = useState<Game[]>([])
   const [participantOptions, setParticipantOptions] = useState<Participant[]>([])
+  const [beverages, setBeverages] = useState<string[]>([])
   const [statusBadge, setStatusBadge] = useState('Loading tracker…')
   const [selectedGameId, setSelectedGameId] = useState<number | ''>('')
   const [view, setView] = useState<'dashboard' | 'player' | 'drink'>('dashboard')
@@ -165,6 +166,16 @@ export default function App() {
     }
   }
 
+  const loadBeverages = async () => {
+    try {
+      const payload = await apiGet('/api/beverages')
+      setBeverages(Array.isArray(payload) ? payload : [])
+    } catch (error) {
+      console.error('Failed to load beverages', error)
+      setBeverages([])
+    }
+  }
+
   const applyDefaultTimes = () => {
     const participantArrival = document.querySelector<HTMLInputElement>('input[name="arrival_time"]')
     const drinkTimestamp = document.querySelector<HTMLInputElement>('input[name="timestamp"]')
@@ -213,6 +224,7 @@ export default function App() {
     loadDashboard()
     loadGameHistory()
     refreshParticipantOptions()
+    loadBeverages()
 
     // 1. WebSocket Connection with Diagnostics
     const socket: Socket = io(undefined, { path: '/socket.io' })
@@ -224,6 +236,7 @@ export default function App() {
       console.log('⚡ Socket event received, refreshing data...')
       void loadDashboard()
       void refreshParticipantOptions()
+      void loadBeverages()
     }
 
     socket.on('update', handleRemoteUpdate)
@@ -236,6 +249,7 @@ export default function App() {
     const pollInterval = setInterval(() => {
       void loadDashboard()
       void refreshParticipantOptions()
+      void loadBeverages()
     }, 10000)
 
     return () => {
@@ -243,6 +257,12 @@ export default function App() {
       clearInterval(pollInterval)
     }
   }, [])
+
+  useEffect(() => {
+    if (view === 'drink' || view === 'player') {
+      applyDefaultTimes()
+    }
+  }, [view, formKey])
 
   const participantNames = useMemo(() => {
     const names = new Set<string>()
@@ -380,6 +400,7 @@ export default function App() {
       setFormKey((k) => k + 1)
       await loadDashboard()
       await refreshParticipantOptions()
+      await loadBeverages()
       showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
     } catch {
       showToast('Failed to log drink', true)
@@ -679,9 +700,15 @@ export default function App() {
                 id="beverage"
                 name="beverage"
                 type="text"
+                list="beverageOptions"
                 required
-                placeholder="Enter beverage name"
+                placeholder="Enter beverage or select existing"
               />
+              <datalist id="beverageOptions">
+                {beverages.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
             </div>
             <div className="form-group">
               <label htmlFor="volumeMl">Volume (mL)</label>

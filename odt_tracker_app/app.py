@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id
+from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id, get_beverages
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -208,6 +208,11 @@ async def current_game():
 @app.get('/api/games')
 async def games():
     return list_games()
+
+
+@app.get('/api/beverages')
+async def beverages():
+    return get_beverages()
 
 
 @app.post('/api/game/select')
