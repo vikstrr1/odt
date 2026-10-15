@@ -21,6 +21,7 @@ type Participant = {
   total_volume_l: number
   alcohol_amount_l: number
   alcohol_per_kg: number
+  drink_count?: number
 }
 
 type TeamStanding = {
@@ -99,6 +100,8 @@ export default function App() {
   const [games, setGames] = useState<Game[]>([])
   const [participantOptions, setParticipantOptions] = useState<Participant[]>([])
   const [beverages, setBeverages] = useState<string[]>([])
+  const [volumeOptions, setVolumeOptions] = useState<number[]>([330, 500])
+  const [abvOptions, setAbvOptions] = useState<number[]>([5.2])
   const [statusBadge, setStatusBadge] = useState('Loading tracker…')
   const [selectedGameId, setSelectedGameId] = useState<number | ''>('')
   const [view, setView] = useState<'dashboard' | 'player' | 'drink'>('dashboard')
@@ -425,6 +428,15 @@ export default function App() {
       await loadDashboard()
       await refreshParticipantOptions()
       await loadBeverages()
+      // Add newly used volume/abv to local option lists so they appear in the datalists
+      const vol = Number(payload.volume_ml)
+      if (!Number.isNaN(vol) && !volumeOptions.includes(vol)) {
+        setVolumeOptions((prev) => [...prev, vol].sort((a, b) => a - b))
+      }
+      const abv = Number(payload.abv_percent)
+      if (!Number.isNaN(abv) && !abvOptions.includes(abv)) {
+        setAbvOptions((prev) => [...prev, abv].sort((a, b) => a - b))
+      }
       showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
     } catch {
       showToast('Failed to log drink', true)
@@ -741,10 +753,16 @@ export default function App() {
                 name="volume_ml"
                 type="number"
                 step="1"
+                list="volumeOptions"
                 defaultValue={500}
                 required
                 placeholder="Enter drink volume"
               />
+              <datalist id="volumeOptions">
+                {volumeOptions.map((v) => (
+                  <option key={v} value={v} />
+                ))}
+              </datalist>
             </div>
             <div className="form-group">
               <label htmlFor="abvPercent">ABV (%)</label>
@@ -753,10 +771,16 @@ export default function App() {
                 name="abv_percent"
                 type="number"
                 step="0.1"
+                list="abvOptions"
                 defaultValue={5.2}
                 required
                 placeholder="Enter alcohol by volume"
               />
+              <datalist id="abvOptions">
+                {abvOptions.map((a) => (
+                  <option key={a} value={a} />
+                ))}
+              </datalist>
             </div>
             <div className="form-group">
               <label htmlFor="timestamp">Timestamp</label>
@@ -872,6 +896,7 @@ export default function App() {
                     <th>Rank</th>
                     <th>Participant</th>
                     <th>Team</th>
+                    <th>Drinks</th>
                     <th>Total volume (L)</th>
                     <th>Alcohol (L)</th>
                     <th>Alcohol / kg</th>
@@ -880,7 +905,7 @@ export default function App() {
                 <tbody id="rankingBody">
                   {participants.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="empty-state">
+                      <td colSpan={7} className="empty-state">
                         No participants yet
                       </td>
                     </tr>
@@ -892,6 +917,7 @@ export default function App() {
                         </td>
                         <td>{participant.name}</td>
                         <td>{participant.team}</td>
+                        <td>{participant.drink_count || 0}</td>
                         <td>{formatLiters(participant.total_volume_l)}</td>
                         <td>{formatLiters(participant.alcohol_amount_l)}</td>
                         <td>{formatMlPerKg(participant.alcohol_per_kg)}</td>
