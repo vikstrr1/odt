@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id
+from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id, get_drink_counts
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -208,6 +208,18 @@ async def current_game():
 @app.get('/api/games')
 async def games():
     return list_games()
+
+
+@app.get('/api/drink_counts')
+async def drink_counts():
+    """Return per-participant drink counts for the current game.
+
+    The response is a list of objects: [{"participant_id": 1, "drink_count": 3}, ...]
+    """
+    counts = get_drink_counts()
+    # Convert mapping to list for stable JSON keys
+    payload = [{'participant_id': pid, 'drink_count': cnt} for pid, cnt in counts.items()]
+    return payload
 
 
 @app.post('/api/game/select')
