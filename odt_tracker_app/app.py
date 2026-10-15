@@ -171,6 +171,15 @@ async def create_drink(payload: dict, _auth=Depends(require_admin)):
             await sio.emit('drink_logged', safe_payload)
         except Exception as e:
              print(f"Socket emit failed on drink_logged: {e}")
+        # Log current drink counts for debugging
+        try:
+            ranks = get_rankings()
+            for r in ranks:
+                if r.get('name') == name:
+                    print(f"[DEBUG] Participant '{name}' drink_count={r.get('drink_count')} total_volume_l={r.get('total_volume_l')}")
+                    break
+        except Exception as e:
+            print(f"[DEBUG] Failed to compute rankings after drink insert: {e}")
              
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -141,7 +141,13 @@ export default function App() {
     try {
       const payload = await apiGet('/api/summary')
       setSummary(payload.summary || null)
-      setParticipants(payload.participants || [])
+      // Ensure drink_count is numeric and log payload for debugging
+      const participantsClean = (payload.participants || []).map((p: any) => ({
+        ...p,
+        drink_count: Number(p.drink_count || 0),
+      }))
+      console.debug('loadDashboard participants:', participantsClean)
+      setParticipants(participantsClean)
       setTeamStandings(payload.team_standings || [])
       setTimeline(payload.timeline || [])
       setStatusBadge('Tracker active')
