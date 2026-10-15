@@ -873,6 +873,36 @@ def get_beverages() -> list[str]:
             ).fetchall()
             return [row['beverage'] for row in rows]
 
+
+        def get_all_drinks() -> list[dict[str, Any]]:
+            """Return all drinks for the current game with participant names."""
+            game_id = get_current_game_id()
+            with get_connection() as conn:
+                if is_postgres():
+                    rows = conn.execute(
+                        '''
+                        SELECT p.name AS participant_name, d.timestamp, d.beverage, d.volume_ml, d.abv_percent
+                        FROM drinks d
+                        JOIN participants p ON p.id = d.participant_id
+                        WHERE d.game_id = %s
+                        ORDER BY d.timestamp ASC
+                        ''',
+                        (game_id,),
+                    ).fetchall()
+                    return [_serialize_row(r) for r in rows]
+
+                rows = conn.execute(
+                    '''
+                    SELECT p.name AS participant_name, d.timestamp, d.beverage, d.volume_ml, d.abv_percent
+                    FROM drinks d
+                    JOIN participants p ON p.id = d.participant_id
+                    WHERE d.game_id = ?
+                    ORDER BY d.timestamp ASC
+                    ''',
+                    (game_id,),
+                ).fetchall()
+                return [_serialize_row(r) for r in rows]
+
         rows = conn.execute(
             'SELECT DISTINCT beverage FROM drinks WHERE game_id = ? ORDER BY beverage',
             (game_id,),

@@ -15,7 +15,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id, get_beverages
+from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id, get_beverages, get_all_drinks
+import io
+import csv
+from fastapi.responses import StreamingResponse
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -213,6 +216,28 @@ async def games():
 @app.get('/api/beverages')
 async def beverages():
     return get_beverages()
+
+
+@app.get('/api/drinks/export')
+async def export_drinks(_auth=Depends(require_admin)):
+    """Return a CSV file with all drinks for the current game. Admin-only."""
+    drinks = get_all_drinks()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['participant_name', 'timestamp', 'beverage', 'volume_ml', 'abv_percent'])
+    for d in drinks:
+        writer.writerow([
+            d.get('participant_name', ''),
+            d.get('timestamp', ''),
+            d.get('beverage', ''),
+            d.get('volume_ml', ''),
+            d.get('abv_percent', ''),
+        ])
+
+    output.seek(0)
+    filename = f"odt_drinks_game_{get_current_game_id()}.csv"
+    return StreamingResponse(iter([output.getvalue()]), media_type='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
 
 @app.post('/api/game/select')
