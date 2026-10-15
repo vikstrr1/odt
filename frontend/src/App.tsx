@@ -96,6 +96,7 @@ export default function App() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [teamStandings, setTeamStandings] = useState<TeamStanding[]>([])
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])
+  const [drinkCounts, setDrinkCounts] = useState<Record<number, number>>({})
   const [games, setGames] = useState<Game[]>([])
   const [participantOptions, setParticipantOptions] = useState<Participant[]>([])
   const [statusBadge, setStatusBadge] = useState('Loading tracker…')
@@ -141,6 +142,18 @@ export default function App() {
       setTeamStandings(payload.team_standings || [])
       setTimeline(payload.timeline || [])
       setStatusBadge('Tracker active')
+      try {
+        const countsPayload = await apiGet('/api/drink_counts')
+        const mapping: Record<number, number> = {}
+        if (Array.isArray(countsPayload)) {
+          countsPayload.forEach((item: any) => {
+            mapping[Number(item.participant_id)] = Number(item.drink_count || 0)
+          })
+        }
+        setDrinkCounts(mapping)
+      } catch (err) {
+        console.warn('Failed to load drink counts', err)
+      }
     } catch (error) {
       console.error(error)
       setStatusBadge('Tracker unavailable')
@@ -816,6 +829,7 @@ export default function App() {
                 <thead>
                   <tr>
                     <th>Rank</th>
+                    <th>Drinks</th>
                     <th>Participant</th>
                     <th>Team</th>
                     <th>Total volume (L)</th>
@@ -836,6 +850,7 @@ export default function App() {
                         <td>
                           <span className="rank-badge">{index + 1}</span>
                         </td>
+                          <td>{drinkCounts[(participant as any).participant_id || (participant as any).id] || 0}</td>
                         <td>{participant.name}</td>
                         <td>{participant.team}</td>
                         <td>{formatLiters(participant.total_volume_l)}</td>
