@@ -541,47 +541,77 @@ def add_drink(participant_name: str, beverage: str, volume_ml: float, abv_percen
 
 
 def get_rankings() -> list[dict[str, Any]]:
-    rows = list_participants()
+    """Return participant rankings using a single aggregated SQL query per game.
+
+    This computes drink_count and total volume/abv with SQL aggregation for
+    correctness and performance instead of iterating drinks in Python.
+    """
     game_id = get_current_game_id()
     results: list[dict[str, Any]] = []
 
+    with get_connection() as conn:
+        if is_postgres():
+            # Aggregate per participant: count drinks, sum volumes and alcohol grams
+            rows = conn.execute(
+                '''
+                SELECT p.id AS participant_id,
+                       p.name,
+                       p.team_id,
+                       t.name AS team_name,
+                       p.weight_kg,
+                       p.arrival_time,
+                       COALESCE(COUNT(d.id), 0) AS drink_count,
+                       COALESCE(SUM(d.volume_ml), 0) AS total_volume_ml,
+                       COALESCE(SUM(d.volume_ml * d.abv_percent / 100.0), 0) AS total_abv_g
+                FROM participants p
+                JOIN teams t ON t.id = p.team_id
+                LEFT JOIN drinks d ON d.participant_id = p.id AND d.game_id = %s
+                WHERE p.game_id = %s
+                GROUP BY p.id, p.name, p.team_id, t.name, p.weight_kg, p.arrival_time
+                ''',
+                (game_id, game_id),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                '''
+                SELECT p.id AS participant_id,
+                       p.name,
+                       p.team_id,
+                       t.name AS team_name,
+                       p.weight_kg,
+                       p.arrival_time,
+                       COALESCE(COUNT(d.id), 0) AS drink_count,
+                       COALESCE(SUM(d.volume_ml), 0) AS total_volume_ml,
+                       COALESCE(SUM(d.volume_ml * d.abv_percent / 100.0), 0) AS total_abv_g
+                FROM participants p
+                JOIN teams t ON t.id = p.team_id
+                LEFT JOIN drinks d ON d.participant_id = p.id AND d.game_id = ?
+                WHERE p.game_id = ?
+                GROUP BY p.id, p.name, p.team_id, t.name, p.weight_kg, p.arrival_time
+                ''',
+                (game_id, game_id),
+            ).fetchall()
+
     for row in rows:
-        total_volume = 0.0
-        total_abv = 0.0
-        with get_connection() as conn:
-            if is_postgres():
-                drinks = conn.execute(
-                    'SELECT volume_ml, abv_percent FROM drinks WHERE game_id = %s AND participant_id = %s ORDER BY timestamp ASC',
-                    (game_id, row['id']),
-                ).fetchall()
-            else:
-                drinks = conn.execute(
-                    'SELECT volume_ml, abv_percent FROM drinks WHERE game_id = ? AND participant_id = ? ORDER BY timestamp ASC',
-                    (game_id, row['id']),
-                ).fetchall()
-
-        for drink in drinks:
-            volume_ml = float(drink['volume_ml'])
-            abv_percent = float(drink['abv_percent'])
-            total_volume += volume_ml
-            total_abv += volume_ml * (abv_percent / 100.0)
-
-        total_volume_l = total_volume / 1000.0
-        total_alcohol_g = total_abv
-        weight_kg = float(row['weight_kg'])
-        alcohol_per_kg = (total_alcohol_g / weight_kg) if weight_kg else 0.0
+        # Normalize values and compute derived metrics
+        total_volume_ml = float(row['total_volume_ml'] or 0.0)
+        total_volume_l = total_volume_ml / 1000.0
+        total_abv_g = float(row['total_abv_g'] or 0.0)
+        weight_kg = float(row['weight_kg'] or 0.0)
+        alcohol_per_kg = (total_abv_g / weight_kg) if weight_kg else 0.0
 
         results.append({
-            'participant_id': row['id'],
+            'participant_id': int(row['participant_id']),
             'game_id': game_id,
             'name': row['name'],
             'team': row['team_name'],
-            'team_id': row['team_id'],
+            'team_id': int(row['team_id']),
             'weight_kg': weight_kg,
             'arrival_time': row['arrival_time'],
             'total_volume_l': round(total_volume_l, 3),
-            'alcohol_amount_l': round(total_alcohol_g / 1000.0, 3),
+            'alcohol_amount_l': round(total_abv_g / 1000.0, 3),
             'alcohol_per_kg': round(alcohol_per_kg, 4),
+            'drink_count': int(row['drink_count'] or 0),
         })
 
     return sorted(results, key=lambda x: x['total_volume_l'], reverse=True)
