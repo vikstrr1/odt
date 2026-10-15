@@ -179,29 +179,7 @@ export default function App() {
     }
   }
 
-  const downloadDrinksCsv = async () => {
-    try {
-      const headers = await getAuthHeaders()
-      const response = await fetch('/api/drinks/export', { headers })
-      if (!response.ok) {
-        showToast('Failed to download CSV', true)
-        return
-      }
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `odt_drinks_${new Date().toISOString().slice(0,10)}.csv`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-      showToast('CSV download started')
-    } catch (error) {
-      console.error('Download failed', error)
-      showToast('Failed to download CSV', true)
-    }
-  }
+  // CSV download removed
 
   const applyDefaultTimes = () => {
     const participantArrival = document.querySelector<HTMLInputElement>('input[name="arrival_time"]')
@@ -823,9 +801,6 @@ export default function App() {
                 onClick={() => setView('drink')}
               >
                 Add drink
-              </button>
-              <button type="button" className="header-action" onClick={downloadDrinksCsv}>
-                Download CSV
               </button>
             </>
           )}
