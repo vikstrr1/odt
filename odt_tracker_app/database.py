@@ -617,6 +617,43 @@ def get_rankings() -> list[dict[str, Any]]:
     return sorted(results, key=lambda x: x['total_volume_l'], reverse=True)
 
 
+def get_drink_counts() -> dict[int, int]:
+    """Return a mapping of participant_id -> number of drinks for the current game.
+
+    This runs a separate SQL aggregation so callers can fetch drink counts
+    independently of the heavier `get_rankings()` query.
+    """
+    game_id = get_current_game_id()
+    counts: dict[int, int] = {}
+    with get_connection() as conn:
+        if is_postgres():
+            rows = conn.execute(
+                '''
+                SELECT participant_id, COUNT(*) AS drink_count
+                FROM drinks
+                WHERE game_id = %s
+                GROUP BY participant_id
+                ''',
+                (game_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                '''
+                SELECT participant_id, COUNT(*) AS drink_count
+                FROM drinks
+                WHERE game_id = ?
+                GROUP BY participant_id
+                ''',
+                (game_id,),
+            ).fetchall()
+
+    for row in rows:
+        pid = int(row['participant_id'])
+        counts[pid] = int(row['drink_count'] or 0)
+
+    return counts
+
+
 def get_team_standings() -> list[dict[str, Any]]:
     participants = get_rankings()
     grouped: dict[str, list[dict[str, Any]]] = {}
