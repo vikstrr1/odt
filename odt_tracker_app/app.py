@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id, get_beverages
+from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -171,15 +171,6 @@ async def create_drink(payload: dict, _auth=Depends(require_admin)):
             await sio.emit('drink_logged', safe_payload)
         except Exception as e:
              print(f"Socket emit failed on drink_logged: {e}")
-        # Log current drink counts for debugging
-        try:
-            ranks = get_rankings()
-            for r in ranks:
-                if r.get('name') == name:
-                    print(f"[DEBUG] Participant '{name}' drink_count={r.get('drink_count')} total_volume_l={r.get('total_volume_l')}")
-                    break
-        except Exception as e:
-            print(f"[DEBUG] Failed to compute rankings after drink insert: {e}")
              
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -217,14 +208,6 @@ async def current_game():
 @app.get('/api/games')
 async def games():
     return list_games()
-
-
-@app.get('/api/beverages')
-async def beverages():
-    return get_beverages()
-
-
-# CSV export endpoint removed.
 
 
 @app.post('/api/game/select')
