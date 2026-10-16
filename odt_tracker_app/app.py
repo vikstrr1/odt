@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id, get_drink_counts
+from database import add_drink, add_participant, get_current_game_id, get_rankings, get_summary, get_team_standings, get_timeline, init_db, list_games, reset_game, set_current_game_id, get_drink_counts, get_beverages
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -176,6 +176,15 @@ async def create_drink(payload: dict, _auth=Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
         
     return {'status': 'ok', 'drink': drink}
+
+@app.get('/api/beverages')
+async def get_beverages_endpoint():
+    """Return distinct beverage objects for auto-filling."""
+    try:
+        bev = get_beverages()
+        return bev
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post('/api/reset')
