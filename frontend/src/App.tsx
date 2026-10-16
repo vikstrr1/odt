@@ -482,7 +482,7 @@ export default function App() {
       <div className="app-shell login-shell">
         <div className="login-card">
           <p className="eyebrow">ÖDT Tracker</p>
-          <h1>ÖDT Tracker 2025</h1>
+          <h1>ÖDT Tracker 2026</h1>
           <p className="login-sub">Sign in to manage participants and drinks</p>
           <button
             type="button"
