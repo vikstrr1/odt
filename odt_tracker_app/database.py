@@ -839,7 +839,7 @@ def get_summary() -> dict[str, Any]:
                 slowest_name = row['name']
 
     payload = {
-        'title': 'ÖDT Tracker 2025',
+        'title': 'ÖDT Tracker 2026',
         'leader': rankings[0]['name'] if rankings else None,
         'team_leader': teams[0]['team'] if teams else None,
         'participant_count': len(rankings),

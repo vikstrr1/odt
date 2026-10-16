@@ -511,7 +511,7 @@ export default function App() {
           <header className="topbar">
             <div>
               <p className="eyebrow">ÖDT Tracker</p>
-              <h1>{summary?.title || '2025 dashboard'}</h1>
+              <h1>{summary?.title || '2026 dashboard'}</h1>
             </div>
             <div className="header-actions">
               <button type="button" className="header-action" onClick={() => setView('dashboard')}>
@@ -538,7 +538,7 @@ export default function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">ÖDT Tracker</p>
-            <h1>{summary?.title || '2025 dashboard'}</h1>
+            <h1>{summary?.title || '2026 dashboard'}</h1>
           </div>
           <div className="header-actions">
             <button
@@ -647,7 +647,7 @@ export default function App() {
           <header className="topbar">
             <div>
               <p className="eyebrow">ÖDT Tracker</p>
-              <h1>{summary?.title || '2025 dashboard'}</h1>
+              <h1>{summary?.title || '2026 dashboard'}</h1>
             </div>
             <div className="header-actions">
               <button type="button" className="header-action" onClick={() => setView('dashboard')}>
@@ -674,7 +674,7 @@ export default function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">ÖDT Tracker</p>
-            <h1>{summary?.title || '2025 dashboard'}</h1>
+            <h1>{summary?.title || '2026 dashboard'}</h1>
           </div>
           <div className="header-actions">
             <button
@@ -809,8 +809,7 @@ export default function App() {
           </form>
         </section>
         </div>
-    )
-  }
+  )
 
   return (
     <div className="app-shell">
@@ -818,7 +817,7 @@ export default function App() {
       <header className="topbar">
         <div>
           <p className="eyebrow">ÖDT Tracker</p>
-          <h1>{summary?.title || '2025 dashboard'}</h1>
+          <h1>{summary?.title || '2026 dashboard'}</h1>
         </div>
         <div className="header-actions">
           {canManageGame && (
