@@ -741,11 +741,16 @@ export default function App() {
                 name="volume_ml"
                 type="number"
                 step="1"
+                list="volume-list"
                 value={volumeMl}
                 onChange={(e) => setVolumeMl(e.target.value)}
                 required
                 placeholder="Enter drink volume"
               />
+              <datalist id="volume-list">
+                <option value="330" />
+                <option value="500" />
+              </datalist>
             </div>
             
             <div className="form-group">
@@ -768,6 +773,7 @@ export default function App() {
                 id="timestamp"
                 name="timestamp"
                 type="datetime-local"
+                defaultValue={formatLocalDateTimeInput()}
               />
             </div>
             <button type="submit" className="submit-button">
