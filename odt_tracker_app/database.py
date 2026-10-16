@@ -653,6 +653,27 @@ def get_drink_counts() -> dict[int, int]:
 
     return counts
 
+def get_beverages():
+    with get_connection() as conn:
+        # Group by beverage to get distinct names, taking the most common/recent volume and abv
+        rows = conn.execute('''
+            SELECT beverage, 
+                   MAX(volume_ml) as volume_ml, 
+                   MAX(abv_percent) as abv_percent
+            FROM drinks
+            GROUP BY beverage
+            ORDER BY beverage ASC
+        ''').fetchall()
+        
+        return [
+            {
+                "name": row["beverage"], 
+                "volume_ml": row["volume_ml"], 
+                "abv_percent": row["abv_percent"]
+            } 
+            for row in rows
+        ]
+
 
 def get_team_standings() -> list[dict[str, Any]]:
     participants = get_rankings()

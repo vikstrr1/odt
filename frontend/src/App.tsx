@@ -105,6 +105,10 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null)
   const [formKey, setFormKey] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [beverageOptions, setBeverageOptions] = useState<{name: string, volume_ml: number, abv_percent: number}[]>([])
+  const [beverage, setBeverage] = useState('')
+  const [volumeMl, setVolumeMl] = useState('500')
+  const [abvPercent, setAbvPercent] = useState('5.2')
   const chartRef = useRef<HTMLCanvasElement | null>(null)
   const chartInstanceRef = useRef<Chart | null>(null)
 
@@ -177,6 +181,16 @@ export default function App() {
       console.error(error)
     }
   }
+
+  const fetchBeverages = async () => {
+      try {
+        const data = await apiGet('/api/beverages')
+        setBeverageOptions(data)
+      } catch (err) {
+        console.error("Failed to fetch beverages", err)
+      }
+    }
+    fetchBeverages()
 
   const applyDefaultTimes = () => {
     const participantArrival = document.querySelector<HTMLInputElement>('input[name="arrival_time"]')
@@ -391,11 +405,25 @@ export default function App() {
     try {
       await apiPost('/api/drinks', payload)
       setFormKey((k) => k + 1)
+      setBeverage('')
+      setVolumeMl('500')
+      setAbvPercent('5.2')
       await loadDashboard()
       await refreshParticipantOptions()
       showToast(`${payload.beverage} logged for ${payload.participant_name}!`)
     } catch {
       showToast('Failed to log drink', true)
+    }
+  }
+
+  const handleBeverageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value
+    setBeverage(newName)
+    
+    const match = beverageOptions.find((b) => b.name === newName)
+    if (match) {
+      setVolumeMl(String(match.volume_ml))
+      setAbvPercent(String(match.abv_percent))
     }
   }
 
@@ -686,16 +714,26 @@ export default function App() {
                 ))}
               </select>
             </div>
+
             <div className="form-group">
               <label htmlFor="beverage">Beverage</label>
               <input
                 id="beverage"
                 name="beverage"
                 type="text"
+                list="beverage-list"
+                value={beverage}
+                onChange={handleBeverageChange}
                 required
                 placeholder="Enter beverage name"
               />
+              <datalist id="beverage-list">
+                {beverageOptions.map((bev, index) => (
+                  <option key={index} value={bev.name} />
+                ))}
+              </datalist>
             </div>
+            
             <div className="form-group">
               <label htmlFor="volumeMl">Volume (mL)</label>
               <input
@@ -703,11 +741,13 @@ export default function App() {
                 name="volume_ml"
                 type="number"
                 step="1"
-                defaultValue={500}
+                value={volumeMl}
+                onChange={(e) => setVolumeMl(e.target.value)}
                 required
                 placeholder="Enter drink volume"
               />
             </div>
+            
             <div className="form-group">
               <label htmlFor="abvPercent">ABV (%)</label>
               <input
@@ -715,11 +755,13 @@ export default function App() {
                 name="abv_percent"
                 type="number"
                 step="0.1"
-                defaultValue={5.2}
+                value={abvPercent}
+                onChange={(e) => setAbvPercent(e.target.value)}
                 required
                 placeholder="Enter alcohol by volume"
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="timestamp">Timestamp</label>
               <input
@@ -733,9 +775,6 @@ export default function App() {
             </button>
           </form>
         </section>
-      </div>
-    )
-  }
 
   return (
     <div className="app-shell">
