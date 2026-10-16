@@ -185,12 +185,28 @@ export default function App() {
   const fetchBeverages = async () => {
       try {
         const data = await apiGet('/api/beverages')
-        setBeverageOptions(data)
+        const normalized = Array.isArray(data)
+          ? data.map((item) => {
+              if (typeof item === 'string') {
+                return { name: item, volume_ml: 500, abv_percent: 5.2 }
+              }
+              return {
+                name: String(item?.name || ''),
+                volume_ml: Number(item?.volume_ml || 500),
+                abv_percent: Number(item?.abv_percent || 5.2),
+              }
+            }).filter((item) => item.name)
+          : []
+        setBeverageOptions(normalized)
       } catch (err) {
-        console.error("Failed to fetch beverages", err)
+        console.error('Failed to fetch beverages', err)
+        setBeverageOptions([])
       }
     }
-    fetchBeverages()
+
+  useEffect(() => {
+    void fetchBeverages()
+  }, [selectedGameId])
 
   const applyDefaultTimes = () => {
     const participantArrival = document.querySelector<HTMLInputElement>('input[name="arrival_time"]')

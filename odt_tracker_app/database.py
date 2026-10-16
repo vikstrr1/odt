@@ -653,24 +653,43 @@ def get_drink_counts() -> dict[int, int]:
 
     return counts
 
-def get_beverages():
+def get_beverages() -> list[dict[str, Any]]:
+    """Return distinct beverage metadata for the current game, sorted alphabetically."""
+    game_id = get_current_game_id()
     with get_connection() as conn:
-        # Group by beverage to get distinct names, taking the most common/recent volume and abv
-        rows = conn.execute('''
-            SELECT beverage, 
-                   MAX(volume_ml) as volume_ml, 
-                   MAX(abv_percent) as abv_percent
-            FROM drinks
-            GROUP BY beverage
-            ORDER BY beverage ASC
-        ''').fetchall()
-        
+        if is_postgres():
+            rows = conn.execute(
+                '''
+                SELECT beverage,
+                       MAX(volume_ml) AS volume_ml,
+                       MAX(abv_percent) AS abv_percent
+                FROM drinks
+                WHERE game_id = %s
+                GROUP BY beverage
+                ORDER BY beverage ASC
+                ''',
+                (game_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                '''
+                SELECT beverage,
+                       MAX(volume_ml) AS volume_ml,
+                       MAX(abv_percent) AS abv_percent
+                FROM drinks
+                WHERE game_id = ?
+                GROUP BY beverage
+                ORDER BY beverage ASC
+                ''',
+                (game_id,),
+            ).fetchall()
+
         return [
             {
-                "name": row["beverage"], 
-                "volume_ml": row["volume_ml"], 
-                "abv_percent": row["abv_percent"]
-            } 
+                'name': row['beverage'],
+                'volume_ml': float(row['volume_ml'] or 0),
+                'abv_percent': float(row['abv_percent'] or 0),
+            }
             for row in rows
         ]
 
