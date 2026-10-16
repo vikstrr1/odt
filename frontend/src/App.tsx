@@ -628,6 +628,7 @@ export default function App() {
                 id="arrivalTime"
                 name="arrival_time"
                 type="datetime-local"
+                defaultValue={formatLocalDateTimeInput()}
               />
             </div>
             <button type="submit" className="submit-button">
