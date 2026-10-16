@@ -107,7 +107,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [beverageOptions, setBeverageOptions] = useState<{name: string, volume_ml: number, abv_percent: number}[]>([])
   const [beverage, setBeverage] = useState('')
-  const [volumeMl, setVolumeMl] = useState('500')
+  const [volumeMl, setVolumeMl] = useState('')
   const [abvPercent, setAbvPercent] = useState('5.2')
   const chartRef = useRef<HTMLCanvasElement | null>(null)
   const chartInstanceRef = useRef<Chart | null>(null)
@@ -432,15 +432,25 @@ export default function App() {
     }
   }
 
-  const handleBeverageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value
-    setBeverage(newName)
-    
-    const match = beverageOptions.find((b) => b.name === newName)
+  const applyBeverageDefaults = (name: string) => {
+    const normalized = name.trim()
+    if (!normalized) return
+
+    const match = beverageOptions.find((b) => b.name.trim().toLowerCase() === normalized.toLowerCase())
     if (match) {
       setVolumeMl(String(match.volume_ml))
       setAbvPercent(String(match.abv_percent))
     }
+  }
+
+  const handleBeverageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value
+    setBeverage(newName)
+    applyBeverageDefaults(newName)
+  }
+
+  const handleBeverageBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    applyBeverageDefaults(e.target.value)
   }
 
   const summaryCards = [
@@ -740,6 +750,7 @@ export default function App() {
                 list="beverage-list"
                 value={beverage}
                 onChange={handleBeverageChange}
+                onBlur={handleBeverageBlur}
                 required
                 placeholder="Enter beverage name"
               />
