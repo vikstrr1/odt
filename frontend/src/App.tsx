@@ -775,6 +775,9 @@ export default function App() {
             </button>
           </form>
         </section>
+        </div>
+    )
+  }
 
   return (
     <div className="app-shell">
