@@ -810,6 +810,7 @@ export default function App() {
         </section>
         </div>
   )
+}
 
   return (
     <div className="app-shell">
